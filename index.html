@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eef2f3" />
+    <meta name="description" content="Estimate and compare building lifecycle carbon." />
+    <title>Carbonwise — Building carbon, made tangible</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="analysis.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#top" aria-label="Carbonwise home">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 24.5 15.8 5l10.9 19.5H5Z"/><path d="m10.1 24.5 5.7-10.1 5.8 10.1"/></svg></span>
+          <span>carbonwise<span class="brand-dot">.</span></span>
+        </a>
+        <div class="side-caption">WORKSPACE</div>
+        <button class="nav-item active" data-scroll="top"><span class="nav-icon">⌂</span>Overview</button>
+        <button class="nav-item" data-scroll="building"><span class="nav-icon">▦</span>Building inputs</button>
+        <button class="nav-item" data-scroll="material-alternatives"><span class="nav-icon">↗</span>Alternatives<span class="nav-count" id="nav-count">3</span></button>
+        <button class="nav-item" data-scroll="analysis"><span class="nav-icon">▤</span>Comparison</button>
+        <button class="nav-item" data-scroll="method"><span class="nav-icon">ⓘ</span>Method & assumptions</button>
+        <div class="sidebar-spacer"></div>
+        <div class="project-mini">
+          <div class="project-avatar">SR</div>
+          <div><strong id="side-project">Untitled building</strong><small>Project details required</small></div>
+          <span class="more">•••</span>
+        </div>
+        <div class="sidebar-foot">ESTIMATE · V 0.1</div>
+      </aside>
+
+      <main id="top" class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs">Projects <span>/</span> <strong id="crumb-project">Untitled building</strong></div>
+          <div class="top-actions"><span class="saved-status"><i></i><span id="saved-status-text">Saved in this browser</span></span><button class="button button-dark button-small" id="print-report"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4h-2M7 14h10v7H7z"/></svg>Export report</button></div>
+        </header>
+
+        <div class="page-wrap">
+          <div class="print-report-title" id="print-report-title"><strong>CARBON PERFORMANCE REPORT</strong><span id="print-project-meta"></span><span id="print-building-meta"></span></div>
+          <section class="welcome-row">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-rule"></span>BUILDING CARBON ESTIMATOR</div>
+              <h1>A clearer picture of<br />what your building emits.</h1>
+              <p class="intro">Explore embodied and operational carbon early, while design choices are still flexible.</p>
+            </div>
+            <div class="welcome-stamp"><div class="stamp-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><strong id="study-stamp">—</strong><small>YEAR STUDY</small></div></div>
+          </section>
+
+          <section class="metrics-grid" aria-label="Carbon summary">
+            <article class="metric-card metric-total">
+              <div class="metric-heading"><span>Lifecycle carbon</span><span class="metric-icon">↗</span></div>
+              <div class="metric-value"><strong id="lifecycle-total">—</strong><span>tCO₂e</span></div>
+              <div class="metric-footer"><span id="intensity-value">— kgCO₂e / m²</span><span class="metric-tag" id="lifecycle-status">INCOMPLETE SCOPE</span></div>
+              <div class="metric-uncertainty" id="metric-uncertainty">Indicative range —</div>
+              <div class="total-line" aria-hidden="true"><i id="total-line-embodied"></i><i id="total-line-operational"></i></div>
+              <div class="line-legend"><span><i class="dot dot-embodied"></i>Embodied</span><span><i class="dot dot-operational"></i>Operational</span></div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-heading"><span>Embodied carbon</span><span class="metric-icon icon-stone">▧</span></div>
+              <div class="metric-value"><strong id="embodied-total">—</strong><span>tCO₂e</span></div>
+              <div class="metric-note"><span id="embodied-share">—% of lifecycle</span><span>Illustrative A1–A3 estimate</span></div>
+              <div class="mini-bars" id="embodied-bars" aria-label="Material carbon breakdown"></div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-heading"><span>Operational carbon</span><span class="metric-icon icon-sun">◒</span></div>
+              <div class="metric-value"><strong id="operational-total">—</strong><span id="operational-unit">tCO₂</span></div>
+              <div class="metric-note"><span id="annual-energy">— kWh / year</span><span id="annual-grid">Grid electricity</span></div>
+              <div class="op-chart" aria-label="Annual operational emissions over building study period"><div class="op-chart-grid"></div><svg viewBox="0 0 320 45" preserveAspectRatio="none"><path id="op-area" d=""/><path id="op-line" d=""/></svg><span class="op-year">YEAR 1</span><span class="op-year end" id="op-final-year">YEAR —</span></div>
+            </article>
+          </section>
+
+          <section class="content-grid">
+            <div class="left-column">
+              <section class="panel building-panel" id="building">
+                <div class="panel-heading"><div><span class="section-kicker">THE PROJECT</span><h2>Building snapshot</h2></div><span class="edit-pill"><i></i> EDITABLE</span></div>
+                <div class="form-grid">
+                  <label class="field field-wide">Project name<input id="project-name" placeholder="Enter project name" autocomplete="off" /></label>
+                  <label class="field">Location<select id="location"><option value="">Select location</option><option>Mumbai</option><option>Delhi</option><option>Bengaluru</option><option>Jaipur</option></select></label>
+                  <label class="field">Building type<select id="building-type"><option value="">Select building type</option><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="institutional">Institutional</option></select></label>
+                  <label class="field">Floor plate area <span class="unit">m²</span><input id="floor-area" type="number" min="1" max="100000" placeholder="Enter project area" /></label>
+                  <label class="field">Number of floors<input id="floors" type="number" min="1" max="100" placeholder="Enter floor count" /></label>
+                  <label class="field">Study period <span class="unit">years</span><input id="lifetime" type="number" min="1" step="1" placeholder="Required project input" /></label>
+                  <label class="field">Lifecycle carbon target <span class="unit">tCO₂e</span><input id="carbon-budget" type="number" min="0" max="10000000" placeholder="Optional" /></label>
+                  <label class="field">Structural system<select id="structure"><option value="">Select structural system</option><option value="rcc">RCC frame</option><option value="steel">Steel frame</option><option value="masonry">Load-bearing masonry</option><option value="composite">Composite</option></select></label>
+                </div>
+                <div class="assumption-note"><span class="note-mark">i</span><span>Hackathon prototype: floor area × editable material-intensity assumptions estimates quantities. Default quantities, factors and energy values are illustrative and low-confidence.</span></div>
+              </section>
+
+              <section class="panel materials-panel">
+                <div class="panel-heading"><div><span class="section-kicker">MATERIALS & ENERGY</span><h2>What goes into the building</h2></div><button class="text-button" id="toggle-details" aria-expanded="false">Show factors <span>＋</span></button></div>
+                <div class="material-table-wrap"><table class="material-table audit-material-table"><thead><tr><th>Material</th><th>Estimated quantity (kg)</th><th>Illustrative A1–A3 factor (kgCO₂e/kg)</th><th>Embodied carbon (kgCO₂e)</th></tr></thead><tbody id="material-rows"></tbody></table></div>
+                <div class="factor-detail" id="factor-detail" hidden><strong>Factor record status</strong><p>No material emission factors are preloaded. Enter a cited factor with its declared unit, geography, and A1–A3 boundary before calculating embodied carbon.</p></div>
+                <div class="factor-source-list" id="factor-source-list" aria-live="polite"></div>
+                <section class="quantity-estimator" aria-labelledby="quantity-estimator-title">
+                  <div class="estimator-heading"><div><strong id="quantity-estimator-title">Estimate material quantities</strong><p>Use your own material intensities. No benchmark values are prefilled.</p></div><span class="estimator-area" id="estimator-area">Gross floor area: —</span></div>
+                  <div class="estimator-grid" id="estimator-inputs"></div>
+                  <button class="button button-small estimator-button" id="estimate-quantities" type="button">Apply estimates to material quantities</button>
+                  <span class="estimator-status" id="estimator-status" role="status">Enter an intensity in kg/m² for each material you want to estimate.</span>
+                </section>
+                <div class="energy-assumption"><span class="energy-icon">☼</span><div><strong>Energy input · annual building electricity</strong><small>Demo estimates annual kWh from floor area and location-specific prototype intensity. You can edit annual kWh directly.</small><small>City grid factors and energy intensities are assumptions, not sourced project factors.</small></div></div>
+                <div class="audit-input-grid energy-inputs">
+                  <label class="field">Annual electricity <span class="unit">kWh/year</span><input id="annual-kwh" type="number" min="0" step="any" placeholder="Required for B6" /></label>
+                  <label class="field">Consumption data quality<select id="energy-quality"><option value="">Choose provenance</option><option>Measured</option><option>Energy model</option><option>Estimated</option></select></label>
+                  <label class="field field-wide">Consumption / model source URL<input id="energy-source" type="url" placeholder="Meter record, model or estimate basis" /></label>
+                  <label class="field">Annual operational fuel <input id="annual-fuel" type="number" min="0" step="any" placeholder="Enter fuel use or sourced zero" /></label>
+                  <label class="field">Fuel unit<input id="annual-fuel-unit" placeholder="e.g. litre, kWh" /></label>
+                  <label class="field">Fuel factor <span class="unit">kgCO₂e/unit</span><input id="annual-fuel-factor" type="number" min="0" step="any" /></label>
+                  <label class="field">Fuel factor source URL<input id="annual-fuel-factor-source" type="url" /></label>
+                  <label class="field">Fuel consumption source URL<input id="annual-fuel-source" type="url" /></label>
+                  <label class="field field-wide">Grid emission factor record<select id="grid-factor-kind"><option value="cea_india_weighted_average_fy2025_26">CEA India FY 2025–26 weighted average · kgCO₂/kWh · CO₂ only</option><option value="custom">Use sourced project / grid factor · kgCO₂e/kWh</option></select></label>
+                  <label class="field">Custom EF <span class="unit">kgCO₂e/kWh</span><input id="custom-grid-factor" type="number" min="0" step="any" placeholder="Required for CO₂e total" /></label>
+                  <label class="field">Custom EF source URL<input id="custom-grid-source" type="url" placeholder="Required for CO₂e total" /></label>
+                  <label class="field">Factor publication year<input id="custom-grid-year" type="number" min="1900" max="2100" step="1" /></label>
+                  <label class="field">Factor period<select id="custom-grid-temporal"><option value="">Choose</option><option>Current / historical</option><option>Projected</option></select></label>
+                  <label class="field">Factor region<input id="custom-grid-region" placeholder="Country / grid / supplier" /></label>
+                  <label class="field">Factor boundary<input id="custom-grid-boundary" placeholder="GHG coverage and lifecycle boundary" /></label>
+                  <label class="field">T&amp;D losses<select id="custom-grid-losses"><option value="unknown">Not identified</option><option value="yes">Included</option><option value="no">Excluded</option></select></label>
+                  <label class="field">Grid scenario<select id="grid-scenario"><option value="constant">Constant current factor (baseline)</option><option value="moderate">Moderate decarbonization (user-defined)</option><option value="high">High decarbonization (user-defined)</option></select></label>
+                  <label class="field">Moderate annual factor decline <span class="unit">% / year</span><input id="moderate-rate" type="number" min="0" max="99.99" step="any" placeholder="User scenario input" /></label>
+                  <label class="field">High annual factor decline <span class="unit">% / year</span><input id="high-rate" type="number" min="0" max="99.99" step="any" placeholder="User scenario input" /></label>
+                </div>
+                <section class="audit-modules" aria-labelledby="module-input-title"><div class="panel-heading"><div><span class="section-kicker">LIFE-CYCLE MODULES</span><h2 id="module-input-title">Complete the project boundary</h2></div></div>
+                  <p class="small-note">Required modules are shown separately. Enter project data and its source; explicit zero values require a source or a documented zero confirmation. Module D stays outside the A–C total.</p>
+                  <div class="transport-fields"><strong>A4 · Product transport</strong><div class="audit-input-grid"><label class="field">Transported mass <span class="unit">kg</span><input id="a4-mass" type="number" min="0" step="any" /></label><label class="field">Distance <span class="unit">km</span><input id="a4-distance" type="number" min="0" step="any" /></label><label class="field">Outward factor <span class="unit">kgCO₂e/t·km</span><input id="a4-outward" type="number" min="0" step="any" /></label><label class="field">Return factor <span class="unit">kgCO₂e/t·km</span><input id="a4-return" type="number" min="0" step="any" /></label><label class="field">Route / mass source URL<input id="a4-route-source" type="url" placeholder="Project route and mass record" /></label><label class="field">Transport factor source URL<input id="a4-factor-source" type="url" placeholder="Factor / method reference" /></label></div></div>
+                  <div class="transport-fields"><strong>A5 · Construction site emissions</strong><div class="audit-input-grid"><label class="field">Site electricity <span class="unit">kWh</span><input id="a5-electricity" type="number" min="0" step="any" /></label><label class="field">Electricity factor <span class="unit">kgCO₂e/kWh</span><input id="a5-electricity-factor" type="number" min="0" step="any" /></label><label class="field">Electricity-use source URL<input id="a5-electricity-source" type="url" /></label><label class="field">Electricity factor source URL<input id="a5-electricity-factor-source" type="url" /></label><label class="field">Fuel use <input id="a5-fuel" type="number" min="0" step="any" /></label><label class="field">Fuel unit<input id="a5-fuel-unit" placeholder="e.g. litre" /></label><label class="field">Fuel factor <span class="unit">kgCO₂e/unit</span><input id="a5-fuel-factor" type="number" min="0" step="any" /></label><label class="field">Fuel consumption source URL<input id="a5-fuel-source" type="url" /></label><label class="field">Fuel factor source URL<input id="a5-fuel-factor-source" type="url" /></label><label class="field">Construction waste / other A5 <span class="unit">kgCO₂e</span><input id="a5-other" type="number" min="0" step="any" /></label><label class="field field-wide">Waste / other A5 source or zero basis<input id="a5-other-source" type="text" placeholder="Cite the data or explain why zero / not applicable" /></label></div></div>
+                  <div class="module-direct-grid" id="module-inputs"></div>
+                  <div class="replacement-panel"><div class="panel-heading"><div><strong>B4 · Component replacement schedule</strong><small>Replacement years and totals are calculated from the shared study period.</small></div><button class="text-button" id="add-replacement" type="button">Add component +</button></div><div id="replacement-inputs"></div><label class="zero-confirm"><input id="no-replacements" type="checkbox" /> I have checked the schedule and confirm no B4 replacements in this study period.</label></div>
+                </section>
+                <section class="audit-validation" aria-live="polite"><div class="panel-heading"><div><span class="section-kicker">AUTOMATIC AUDIT</span><h2>Validation before report export</h2></div><span class="mix-warning" id="audit-state">INCOMPLETE</span></div><ul id="validation-list"></ul></section>
+              </section>
+            </div>
+
+            <aside class="right-column">
+              <section class="panel breakdown-panel">
+                <div class="panel-heading"><div><span class="section-kicker">CARBON PROFILE</span><h2>Where it comes from</h2></div><button class="menu-button" aria-label="Carbon profile details">•••</button></div>
+                <div class="donut-area"><div class="donut" id="donut"><div class="donut-center"><strong id="donut-total">—</strong><small>tCO₂e</small></div></div><div class="donut-legend" id="donut-legend"></div></div>
+                <div class="profile-divider"></div>
+                <div class="profile-stats"><div><span>Carbon intensity</span><strong id="profile-intensity">— <small>kgCO₂e/m²</small></strong></div><div><span>Annual electricity</span><strong id="profile-energy">— <small>kWh</small></strong></div><div><span>Study period</span><strong id="profile-lifetime">— <small>years</small></strong></div></div>
+                <div class="scope-caption" id="scope-caption">PARTIAL MODULE DATA · WHOLE-LIFE TOTAL NOT AVAILABLE</div>
+              </section>
+              <section class="panel score-panel"><div class="score-top"><div><span class="section-kicker">CARBON SCORE</span><h2>Lifecycle reduction</h2></div><div class="score-number"><strong id="score-value">—</strong><small>/100</small></div></div><div class="score-track"><i id="score-track"></i></div><p id="score-copy">No benchmark or score is available; none is invented.</p><div class="score-caption"><span>VS BASELINE</span><span>UNRANKED</span></div></section>
+            </aside>
+          </section>
+
+          <section class="opportunities-section" id="opportunities">
+            <div class="opportunities-heading"><div><span class="section-kicker">DESIGN EXPLORER</span><h2>Explore lower-carbon alternatives.</h2><p>Intervention effects are illustrative prototype assumptions; mix candidates remain unscored until sourced.</p></div><div class="opportunity-total"><strong id="opportunity-count">0</strong><span>OPTIONS<br />SCORED</span></div></div>
+            <div class="opportunity-grid" id="opportunity-grid"></div>
+            <div class="optimised-bar"><div class="optimised-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></div><div class="optimised-text"><strong>Selected design</strong><span>Select shading, solar or lower-carbon concrete options to compare the prototype scenarios.</span></div><div class="optimised-result"><small>SELECTED WHOLE-LIFE CARBON</small><strong><span id="optimised-total">—</span> <i>tCO₂e</i></strong><span class="reduction-chip" id="reduction-chip">—</span></div></div>
+            <div class="scenario-notice" id="scenario-notice" role="status" hidden></div>
+          </section>
+
+          <section class="analysis-section" id="analysis">
+            <div class="opportunities-heading"><div><span class="section-kicker">COMPARISON & EVIDENCE</span><h2>See the trade-offs before you commit.</h2><p>Baseline and selected scenario, with assumptions kept beside every result.</p></div><div class="data-confidence"><strong id="confidence-value">LOW</strong><span>DATA<br />CONFIDENCE</span></div></div>
+            <div class="comparison-summary" id="comparison-summary"></div>
+            <div class="chart-grid">
+              <article class="chart-panel"><div class="chart-title"><div><strong>Lifecycle estimate</strong><small>Embodied A1–A3 plus operational B6</small></div><span class="chart-index">01</span></div><div id="lifecycle-chart" class="stacked-chart" role="img" aria-label="Lifecycle module carbon values"></div></article>
+              <article class="chart-panel"><div class="chart-title"><div><strong>Material contribution</strong><small>Calculated from entered quantities and factors</small></div><span class="chart-index">02</span></div><div id="material-chart" class="pareto-chart" role="img" aria-label="Material carbon contributions"></div></article>
+              <article class="chart-panel"><div class="chart-title"><div><strong>Scenario comparison</strong><small>Prototype assumptions shown transparently</small></div><span class="chart-index">03</span></div><div id="scenario-chart" class="scenario-chart" role="img" aria-label="Design scenario comparison"></div></article>
+              <article class="chart-panel"><div class="chart-title"><div><strong>Carbon over time</strong><small>Cumulative estimate across the study period</small></div><span class="chart-index">04</span></div><div id="lifetime-chart" class="lifetime-chart" role="img" aria-label="Cumulative carbon over the building lifetime"></div></article>
+            </div>
+            <div class="report-detail-grid">
+              <article class="report-card"><div class="chart-title"><div><strong>Reduction by cause</strong><small>Selected interventions shown separately</small></div></div><div id="reduction-table" class="reduction-table"></div></article>
+              <article class="report-card"><div class="chart-title"><div><strong>Carbon vs cost</strong><small>Enter project costs to plot a decision frontier</small></div></div><div class="cost-plot" id="cost-plot" role="img" aria-label="Carbon reduction compared with additional cost"></div><div class="cost-inputs" id="cost-inputs"></div><small class="cost-source-note">Cost inputs are user-supplied. Use project or supplier quotes; no cost factors are preloaded.</small></article>
+              <article class="report-card budget-card"><div class="chart-title"><div><strong>Carbon budget</strong><small>Set a target in the building snapshot</small></div></div><div id="budget-view"></div></article>
+              <article class="report-card data-quality-card"><div class="chart-title"><div><strong>Data quality</strong><small>Prototype estimate uses illustrative assumptions</small></div></div><div class="quality-bar"><i id="quality-project-bar"></i><i id="quality-source-bar"></i><i id="quality-missing-bar"></i></div><div class="quality-legend" id="quality-legend"></div><div class="confidence-foot" id="quality-foot">Missing values stay unscored; no uncertainty interval is inferred.</div></article>
+            </div>
+          </section>
+
+          <section class="material-alternatives panel" id="material-alternatives">
+            <div class="panel-heading"><div><span class="section-kicker">MATERIAL ALTERNATIVES</span><h2>Alternative comparison requires project evidence.</h2><p class="panel-subtitle">No mix shares, structural eligibility, cost premium or carbon reduction are pre-filled.</p></div><span class="mix-warning">UNSCORED UNTIL SOURCED</span></div>
+            <div class="alternative-detail"><div><span class="detail-symbol">i</span><div><strong>Build a like-for-like comparison</strong><p>For each option, enter a product factor with its declared unit and A1–A3 boundary, matching project quantities, source geography, applicable performance specification and supplier cost. Validate structural, durability and code requirements with the project engineer before using a substitution.</p></div></div></div>
+          </section>
+
+          <section class="method-section" id="method"><div class="method-icon">Σ</div><div><strong>Traceable inputs. No accuracy promise.</strong><p>Carbonwise produces transparent estimates with source status, stated boundaries, and explicit engineering validation flags. This prototype is not certification or engineering sign-off.</p></div><button class="text-button" id="method-toggle" aria-expanded="false">View calculation notes <span>＋</span></button></section>
+          <div class="method-detail" id="method-detail" hidden><div><strong>Calculation record</strong><p>Every displayed result is read from one calculation object. Full whole-life carbon is withheld until all required A–C modules have sourced values.</p></div><div><strong>Embodied carbon</strong><p>A1–A3 = Σ(material quantity × product factor). A4 and A5 use separate transport and site-energy inputs. B1–B5 and C1–C4 remain separate. Module D is outside the A–C total.</p></div><div><strong>Operational carbon · B6</strong><p>Each study year = annual electricity kWh × that year's kgCO₂/kWh. Annual consumption is held constant. Constant-grid uses the CEA historical FY 2025–26 weighted average; moderate/high are user-defined exponential annual declines, not forecasts.</p><a href="https://cea.nic.in/wp-content/uploads/baseline/2026/09/User_Guide__Version_22.0.pdf" target="_blank" rel="noreferrer">CEA · CO₂ Baseline Database Version 22.0, Table S ↗</a></div><div><strong>Standards boundary</strong><p>RICS WLCA 2nd edition provides the modular reporting method; this prototype is not a compliant assessment. BEE ECSBC 2024's embodied-carbon appendix requires project primary data for its A1–A3 reporting scope.</p><a href="https://www.rics.org/content/dam/ricsglobal/documents/standards/Whole_life_carbon_assessment_PS_Sept23.pdf" target="_blank" rel="noreferrer">RICS · Whole Life Carbon Assessment ↗</a><br /><a href="https://beeindia.gov.in/sites/default/files/ECSBC-2024.pdf" target="_blank" rel="noreferrer">BEE · ECSBC 2024 ↗</a></div><div id="formula-detail"></div></div>
+          <footer><span>CARBONWISE <i>·</i> CONCEPT ESTIMATE</span><span>Keep the assumptions close to the decisions.</span><button id="footer-print">PRINT THIS REPORT</button></footer>
+        </div>
+      </main>
+    </div>
+    <script src="material-database.js"></script>
+    
+    <script src="app.js"></script>
+  </body>
+</html>
