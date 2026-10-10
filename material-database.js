@@ -17,7 +17,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Standard OPC concrete',
       color:'#739886'
     },
@@ -34,7 +34,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Blended concrete with fly ash',
       color:'#8db8a5'
     },
@@ -51,7 +51,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Blended concrete with GGBS',
       color:'#aed6c4'
     },
@@ -68,7 +68,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Generic Indian rebar',
       color:'#c9a174'
     },
@@ -85,7 +85,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Hot rolled sections',
       color:'#b58a5a'
     },
@@ -102,7 +102,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Standard kiln bricks',
       color:'#8298a0'
     },
@@ -119,7 +119,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Autoclaved Aerated Concrete',
       color:'#a0b0b8'
     },
@@ -136,7 +136,7 @@ window.CARBONWISE_DATA = {
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
       verificationStatus: 'Generic (Traceable)',
-      confidence:'High',
+      confidence:'Medium',
       applicability:'Standard float glass',
       color:'#b4c3b9'
     }
@@ -144,28 +144,28 @@ window.CARBONWISE_DATA = {
 
   structureQuantityAssumptions: {
     rcc: [
-      { materialId: 'concrete-opc', intensity: 450, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'steel-rebar', intensity: 40, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'masonry-brick', intensity: 120, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'glazing-float', intensity: 22, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
+      { materialId: 'concrete-opc', intensity: 380, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'steel-rebar', intensity: 35, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'masonry-brick', intensity: 110, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'glazing-float', intensity: 20, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
     ],
     steel: [
-      { materialId: 'concrete-opc', intensity: 280, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'steel-section', intensity: 72, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'masonry-brick', intensity: 110, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'glazing-float', intensity: 22, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
+      { materialId: 'concrete-opc', intensity: 220, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'steel-section', intensity: 65, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'masonry-brick', intensity: 100, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'glazing-float', intensity: 20, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
     ],
     masonry: [
-      { materialId: 'concrete-opc', intensity: 180, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'steel-rebar', intensity: 18, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'masonry-brick', intensity: 260, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'glazing-float', intensity: 19, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
+      { materialId: 'concrete-opc', intensity: 160, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'steel-rebar', intensity: 15, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'masonry-brick', intensity: 240, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'glazing-float', intensity: 18, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
     ],
     composite: [
-      { materialId: 'concrete-opc', intensity: 340, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'steel-section', intensity: 55, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'masonry-brick', intensity: 115, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
-      { materialId: 'glazing-float', intensity: 22, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark' },
+      { materialId: 'concrete-opc', intensity: 300, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'steel-section', intensity: 50, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'masonry-brick', intensity: 110, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
+      { materialId: 'glazing-float', intensity: 20, unit: 'kg/m²', basis: 'GFA', confidence: 'Benchmark (Estimated)' },
     ]
   },
 

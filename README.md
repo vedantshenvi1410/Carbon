@@ -29,4 +29,4 @@ The simplified lifecycle estimate includes A1–A3 and B6 only. It does not calc
 - `styles.css`, `analysis.css` — interface styles
 - `app.js` — demo calculator, comparisons, score and print report
 - `material-database.js` — structured prototype assumptions and mix candidates
-- `calculation-engine.js` — retained audit engine reference, not loaded by this MVP UI
+- `calculation-engine.js` — calculation engine loaded by the MVP UI

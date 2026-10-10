@@ -225,8 +225,60 @@
     return { total: annual.reduce((sum, row) => sum + row.carbonKg, 0), annual };
   }
 
-  function close(a, b, tolerance) { return Math.abs(a - b) <= tolerance; }
-  const api = { REQUIRED_MODULES, calculate, operationalSeries };
+  function calculateConcreteMix(mix, projectVolume) {
+    if (!mix || !mix.constituents) return null;
+
+    const mixCarbonPerM3 = mix.constituents.reduce((sum, c) => {
+      return sum + (c.mass * (c.factor || 0));
+    }, 0);
+
+    const totalCarbon = mixCarbonPerM3 * projectVolume;
+
+    return {
+      carbonPerM3: mixCarbonPerM3,
+      totalCarbon: totalCarbon,
+      complete: mix.scored !== false
+    };
+  }
+
+  function calculateQuick(input, data) {
+    const area = (Number(input.floorArea) || 0) * (Number(input.floors) || 0);
+    const years = Number(input.lifetime) || 50;
+    const loc = data.locationAssumptions[input.location] || data.locationAssumptions.Mumbai;
+    const typeFactor = data.buildingTypeFactors[input.buildingType] || 1;
+
+    const materialLines = (input.materials || []).map(m => {
+      const q = Number(m.quantity) || 0;
+      const ef = Number(m.factor) || 0;
+      return { ...m, q, ef, carbon: q * ef };
+    });
+
+    const embodied = materialLines.reduce((s, x) => s + x.carbon, 0);
+    const eui = loc.eui * typeFactor;
+    const annualKwh = input.annualKwh !== '' ? (Number(input.annualKwh) || 0) : area * eui;
+    const operational = annualKwh * loc.grid * years;
+
+    const base = embodied + operational;
+
+    const reductions = (input.selectedOptions || []).map(id => {
+      const o = data.options?.find(z => z.id === id) || {};
+      const saving = o.saving || 0;
+      const carbon = o.type === 'embodied'
+        ? (materialLines.find(x => x.id === 'concrete-opc')?.carbon || 0) * saving
+        : operational * saving;
+      return { id, name: o.title, carbon };
+    });
+
+    const selected = Math.max(0, base - reductions.reduce((s, x) => s + x.carbon, 0));
+
+    return {
+      area, years, loc, annualKwh, embodied, operational, base, selected, lines: materialLines, reductions
+    };
+  }
+
+  const api = { REQUIRED_MODULES, calculate, calculateQuick, calculateConcreteMix, operationalSeries };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CARBONWISE_ENGINE = api;
+
+
 })(typeof window !== 'undefined' ? window : globalThis);

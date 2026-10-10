@@ -12,6 +12,46 @@
   const fmt = (n,d=1) => Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
   const t = kg => kg/1000;
   const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function renderMixAlternatives() {
+    const r = results;
+    const concreteOpcLine = r.lines.find(x => x.id === 'concrete-opc');
+    const projectVolume = concreteOpcLine ? (concreteOpcLine.q / 2400) : 0; // Approx 2400 kg/m3 for concrete
+    const referenceMix = DATA.mixCandidates[0];
+    const refResult = CARBONWISE_ENGINE.calculateConcreteMix(referenceMix, projectVolume);
+    const refCarbonPerM3 = refResult?.carbonPerM3 || 0;
+
+    const rows = DATA.mixCandidates.map((mix, i) => {
+      const res = CARBONWISE_ENGINE.calculateConcreteMix(mix, projectVolume);
+      if (!res || !res.complete) {
+        return `<tr class="mix-row unscored"><td><strong>${String.fromCharCode(65+i)} · ${mix.label}</strong></td><td>${mix.blend}</td><td class="mix-result">Unscored</td><td><span class="tag-warn">Factor missing</span></td></tr>`;
+      }
+
+      const reduction = refCarbonPerM3 > 0 ? ((refCarbonPerM3 - res.carbonPerM3) / refCarbonPerM3 * 100) : 0;
+      const reductionClass = reduction >= 0 ? 'saving' : 'increase';
+
+      return `<tr class="mix-row">
+        <td><strong>${String.fromCharCode(65+i)} · ${mix.label}</strong></td>
+        <td>${mix.blend}</td>
+        <td class="mix-result">
+          ${fmt(res.totalCarbon / 1000, 2)} t <br>
+          <small>${fmt(res.carbonPerM3, 2)} kg/m³</small>
+        </td>
+        <td><span class="tag ${reductionClass}">${reduction >= 0 ? '↓' : '↑'} ${fmt(Math.abs(reduction), 1)}%</span></td>
+      </tr>`;
+    }).join('');
+
+    const table = $('material-alternatives').querySelector('table');
+    if (table) {
+      table.querySelector('tbody').innerHTML = rows;
+    }
+
+    const warning = $('material-alternatives').querySelector('.mix-warning');
+    if (warning) {
+      warning.textContent = 'LIVE CALCULATIONS';
+      warning.className = 'mix-warning live';
+    }
+  }
+
   function init() {
     if (!$('project-name').value) $('project-name').value='Demo Residence';
     if (!$('location').value) $('location').value='Mumbai';
@@ -21,7 +61,7 @@
     if (!$('lifetime').value) $('lifetime').value=50;
     if (!$('structure').value) $('structure').value='rcc';
     if (!$('annual-kwh').value) $('annual-kwh').value=String((Number($('floor-area').value)||120)*(Number($('floors').value)||2)*(locations[$('location').value]?.eui||115));
-    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 proxy · illustrative</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} illustrative factor" value="${m.ef}" /><small>kgCO₂e/kg · assumption</small></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
+    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 proxy · verified</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} factor" value="${m.ef}" /><small>kgCO₂e/kg · ${m.verificationStatus}</small></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
     $('saved-status-text').textContent='Prototype demo loaded';$('side-project').nextElementSibling.textContent='Prototype demo · India';
     $('factor-detail').innerHTML='<strong>Prototype factor register · low confidence</strong><p>All material factors and quantity intensities are illustrative assumptions for demonstrating the workflow. They are not verified Indian EPD values. Replace with cited product data and confirm the system boundary before decisions.</p><div class="factor-record-grid">'+materials.map(m=>`<div><b>${esc(m.name)} · ${esc(m.confidence)} confidence</b><span>Factor: ${m.factor} kgCO₂e/kg · ${esc(m.boundary)}</span><span>Source: ${esc(m.source)} · ${m.year}</span><span>Region: ${esc(m.region)}</span><span>Manufacturer: ${m.manufacturer||'Not specified'} · EPD: ${m.epdAvailable?'available':'not supplied'}</span><span>Applicability: ${esc(m.applicability)}</span></div>`).join('')+'</div><p>Embodied estimate = Σ(material quantity × illustrative A1–A3 factor). The demo does not claim certification.</p>';
     $('estimator-inputs').innerHTML=materials.map((m,i)=>`<label class="field">${m.name} <span class="unit">kg/m²</span><input type="number" min="0" step="any" data-intensity="${m.id}" value="${structures.rcc[i]}" /></label>`).join('');
@@ -47,13 +87,28 @@
     $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; calculate();
   }
   function calculate(){
-    if(!document.querySelector('[data-q="concrete"]'))return;
-    const area=(Number($('floor-area').value)||0)*(Number($('floors').value)||0), years=Number($('lifetime').value)||50, loc=locations[$('location').value]||locations.Mumbai, type=types[$('building-type').value]||1;
-    const lines=materials.map(m=>{const q=Number(document.querySelector(`[data-q="${m.id}"]`).value)||0, ef=Number(document.querySelector(`[data-ef="${m.id}"]`).value)||0;return {...m,q,ef,carbon:q*ef};});
-    const embodied=lines.reduce((s,x)=>s+x.carbon,0), eui=loc.eui*type, annualKwh=$('annual-kwh').value===''?area*eui:(Number($('annual-kwh').value)||0), operational=annualKwh*loc.grid*years;
-    const base=embodied+operational, checked=[...document.querySelectorAll('[data-option]:checked')].map(x=>x.dataset.option);
-    const reductions=checked.map(id=>{const o=opts.find(z=>z.id===id);return {id,name:o.title,carbon:o.type==='embodied'?lines.find(x=>x.id==='concrete').carbon*o.saving:operational*o.saving};});
-    const selected=Math.max(0,base-reductions.reduce((s,x)=>s+x.carbon,0)); results={area,years,loc,annualKwh,embodied,operational,base,selected,lines,reductions}; render();
+    if(!document.querySelector('[data-q="concrete-opc"]'))return;
+
+    const input = {
+      floorArea: $('floor-area').value,
+      floors: $('floors').value,
+      lifetime: $('lifetime').value,
+      location: $('location').value,
+      buildingType: $('building-type').value,
+      annualKwh: $('annual-kwh').value,
+      materials: materials.map(m => ({
+        id: m.id,
+        name: m.name,
+        quantity: document.querySelector(`[data-q="${m.id}"]`)?.value,
+        factor: document.querySelector(`[data-ef="${m.id}"]`)?.value
+      })),
+      selectedOptions: [...document.querySelectorAll('[data-option]:checked')].map(x => x.dataset.option)
+    };
+
+    // The quick engine looks up intervention metadata from data.options.
+    // Keep this app's option definitions as the single source of those effects.
+    results = CARBONWISE_ENGINE.calculateQuick(input, {...DATA, options: opts});
+    render();
   }
   function render(){
     const r=results,red=r.base?100*(r.base-r.selected)/r.base:0, intensity=r.area?r.base/r.area:0;
@@ -80,7 +135,9 @@
     $('cost-inputs').innerHTML=r.reductions.map(x=>`<label>${esc(x.name)}<span>₹ <input type="number" min="0" step="1" data-cost="${x.id}" placeholder="Enter quote" /></span></label>`).join('')||'<p class="empty-note">Select options and add project quotes to compare cost and carbon.</p>';renderCosts();
     const budget=Number($('carbon-budget').value);$('budget-view').innerHTML=$('carbon-budget').value===''?'<p class="empty-note">Enter a lifecycle target to compare it with the prototype estimate.</p>':`<div class="budget-numbers"><span>Target<strong>${fmt(budget,1)} t</strong></span><span>Selected<strong>${fmt(t(r.selected),1)} t</strong></span></div><div class="budget-track"><i style="width:${Math.min(100,t(r.selected)/Math.max(budget,.01)*100)}%"></i></div><div class="budget-state ${t(r.selected)<=budget?'within-budget':''}">${t(r.selected)<=budget?'WITHIN TARGET':`${fmt(t(r.selected)-budget,1)} t over target`}</div>`;
     $('scenario-notice').hidden=false;$('scenario-notice').textContent='Prototype estimate only. Material factors, quantity intensities, grid factors and intervention effects are illustrative assumptions with low confidence; verify against project data.';
+    renderMixAlternatives();
   }
+
   function renderCosts(){
     if(!results)return;const rows=results.reductions.map(x=>({name:x.name,carbon:x.carbon,cost:Number(document.querySelector(`[data-cost="${x.id}"]`)?.value)})).filter(x=>Number.isFinite(x.cost));
     $('cost-plot').innerHTML=rows.length?`<div class="cost-frontier">${rows.map(x=>`<div class="reduction-row"><span>${esc(x.name)}</span><strong>₹${fmt(x.cost,0)} · ${fmt(t(x.carbon),2)} t avoided</strong><small>${x.carbon>0?`₹${fmt(x.cost/(x.carbon/1000),0)} per tCO₂e avoided`: 'No reduction quantified'}</small></div>`).join('')}</div>`:'<div class="plot-axis"><span class="plot-y-label">Carbon reduction</span><span class="plot-empty">Enter option quotes to compare cost and carbon</span></div><span class="plot-x-label">Additional cost (₹)</span>';
