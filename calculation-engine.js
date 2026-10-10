@@ -50,8 +50,8 @@
     const returnFactor = nullableNumber(transport.returnFactor);
     const transportComplete = [transportMass, transportDistance, outwardFactor, returnFactor].every(isNum) && hasUrl(transport.routeSource) && hasUrl(transport.factorSource);
     modules.A4 = {
-      value: transportComplete ? (transportMass / 1000) * transportDistance * (outwardFactor + 0.5 * returnFactor) : null,
-      formula: '(mass kg ÷ 1,000) × distance km × (outward kgCO₂e/t·km + 0.5 × return kgCO₂e/t·km)',
+      value: transportComplete ? (transportMass / 1000) * transportDistance * (outwardFactor + returnFactor) : null,
+      formula: '(mass kg ÷ 1,000) × distance km × (outward kgCO₂e/t·km + return kgCO₂e/t·km)',
       source: [transport.routeSource, transport.factorSource].filter(Boolean).join('; '), complete: transportComplete
     };
 
@@ -86,7 +86,7 @@
       const initialYear = nullableNumber(row.initialYear ?? 0);
       const factor = nullableNumber(row.factor);
       const valid = isNum(quantity) && isNum(serviceLife) && serviceLife > 0 && isNum(initialYear) && isNum(factor) && hasUrl(row.source) && hasUrl(row.serviceLifeSource) && hasText(row.quantitySource) && hasText(row.quantityEvidence) && hasText(row.dataQuality);
-      const years = valid ? Array.from({ length: Math.floor(Math.max(0, period - initialYear) / serviceLife) }, (_, i) => initialYear + serviceLife * (i + 1)).filter(year => year <= period) : [];
+      const years = valid ? Array.from({ length: Math.ceil(Math.max(0, period - initialYear) / serviceLife) }, (_, i) => initialYear + serviceLife * (i + 1)).filter(year => year <= period) : [];
       const replacementsCount = years.length;
       const carbon = valid ? quantity * factor * replacementsCount : null;
       if (!valid) replacementComplete = false;
