@@ -9,7 +9,11 @@
     {id:'solar', title:'Add rooftop solar PV', detail:'Prototype estimate applies an 18% annual grid-electricity offset.', type:'energy', saving:.18}
   ];
   let results;
-  const fmt = (n,d=1) => Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const fmt = (n,d=1) => {
+    if (n == null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+  };
+
   const t = kg => kg/1000;
   const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function renderMixAlternatives() {
@@ -72,7 +76,8 @@
     $('project-name').addEventListener('input',calculate);
     document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calculate));
     document.addEventListener('input',event=>{if(event.target.matches('[data-cost]'))renderCosts();});
-    ['floor-area','floors','structure','location','building-type'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='structure'){(structures[$('structure').value]||structures.rcc).forEach((v,i)=>{document.querySelector(`[data-intensity="${materials[i].id}"]`).value=v;});}applyQuantities();if(!$('annual-kwh').dataset.userEdited)$('annual-kwh').value=String((Number($('floor-area').value)||0)*(Number($('floors').value)||0)*(locations[$('location').value]?.eui||115)*(types[$('building-type').value]||1));calculate();}));
+    ['floor-area','floors','structure','location','building-type'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='structure'){(structures[$('structure').value]||structures.rcc).forEach((v,i)=>{document.querySelector(`[data-intensity="${materials[i].id}"]`).value=v;});}applyQuantities();calculate();}));
+
     $('annual-kwh').addEventListener('input',()=>{$('annual-kwh').dataset.userEdited='true';calculate();});
     $('estimate-quantities').addEventListener('click',applyQuantities);
     $('toggle-details').addEventListener('click',()=>{const x=$('factor-detail');x.hidden=!x.hidden;$('toggle-details').setAttribute('aria-expanded',String(!x.hidden));});
@@ -86,6 +91,7 @@
     materials.forEach((m,i)=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const source=intensity&&Number.isFinite(Number(intensity.value))?Number(intensity.value):defaults[i]; const field=document.querySelector(`[data-q="${m.id}"]`); if(field)field.value=String(area*source);});
     $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; calculate();
   }
+
   function calculate(){
     if(!document.querySelector('[data-q="concrete-opc"]'))return;
 
