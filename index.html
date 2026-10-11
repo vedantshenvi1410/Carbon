@@ -130,15 +130,16 @@
 
               <section class="panel materials-panel">
                 <div class="panel-heading"><div><span class="section-kicker">MATERIALS & ENERGY</span><h2>What goes into the building</h2></div><button class="text-button" id="toggle-details" aria-expanded="false">Show factors <span>＋</span></button></div>
+                <section class="quantity-estimator" aria-labelledby="quantity-estimator-title">
+                  <div class="estimator-heading"><div><strong id="quantity-estimator-title">Estimate material quantities</strong><p>Enter illustrative intensity values in kg/m²; these do not replace a project takeoff. The app multiplies them by gross floor area and fills the quantity rows below. Review and edit each total.</p></div><span class="estimator-area" id="estimator-area">Gross floor area: —</span></div>
+                  <div class="estimator-grid" id="estimator-inputs"></div>
+                  <button class="button button-small estimator-button" id="estimate-quantities" type="button">Apply estimates below</button>
+                  <span class="estimator-status" id="estimator-status" role="status">Enter kg/m² estimates, then apply them to the quantity table below.</span>
+                </section>
+                <div class="quantity-review-heading"><strong>Review project quantities</strong><span>Check or edit the totals before calculating carbon.</span></div>
                 <div class="material-table-wrap"><table class="material-table audit-material-table"><thead><tr><th>Material</th><th>Quantity (kg) and evidence</th><th>Factor (kgCO₂e/kg) and evidence</th><th>Product-stage A1–A3 (kgCO₂e)</th></tr></thead><tbody id="material-rows"></tbody></table></div>
                 <div class="factor-detail" id="factor-detail" hidden><strong>Factor record status</strong><p>Preloaded factors are illustrative and unverified. Enter project-specific cited factors with declared units, geography and boundary before using results for real decisions.</p></div>
                 <div class="factor-source-list" id="factor-source-list" aria-live="polite"></div>
-                <section class="quantity-estimator" aria-labelledby="quantity-estimator-title">
-                  <div class="estimator-heading"><div><strong id="quantity-estimator-title">Estimate material quantities</strong><p>Illustrative starting intensities are editable and do not replace a project takeoff.</p></div><span class="estimator-area" id="estimator-area">Gross floor area: —</span></div>
-                  <div class="estimator-grid" id="estimator-inputs"></div>
-                  <button class="button button-small estimator-button" id="estimate-quantities" type="button">Apply estimates to material quantities</button>
-                  <span class="estimator-status" id="estimator-status" role="status">Enter an intensity in kg/m² for each material you want to estimate.</span>
-                </section>
                 <div class="energy-assumption"><span class="energy-icon">☼</span><div><strong>Energy input · annual building electricity</strong><small>Demo estimates annual kWh from floor area and location-specific prototype intensity. You can edit annual kWh directly.</small><small>City grid factors and energy intensities are assumptions, not sourced project factors.</small></div></div>
                 <div class="audit-input-grid energy-inputs">
                   <label class="field">Annual electricity <span class="unit">kWh/year</span><input id="annual-kwh" type="number" min="0" step="any" placeholder="Required for B6" /></label>

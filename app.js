@@ -72,12 +72,13 @@
     $('saved-status-text').textContent='Prototype demo loaded';$('side-project').nextElementSibling.textContent='Prototype demo · India';
     renderFactorRegister();
     $('estimator-inputs').innerHTML=materials.map(m=>{const assumption=structures.rcc.find(x=>x.materialId===m.id);return `<label class="field">${m.name} <span class="unit">kg/m²</span><input type="number" min="0" step="any" data-intensity="${m.id}" value="${assumption?.intensity ?? ''}" /></label>`;}).join('');
+    updateEstimatorArea();
     $('opportunity-grid').innerHTML=opts.map(o=>`<label class="opportunity-card"><input type="checkbox" data-option="${o.id}" /><span class="option-icon">↗</span><strong>${o.title}</strong><small>${o.detail}</small><b data-saving="${o.id}">Press Calculate to update</b></label>`).join('');
     $('material-alternatives').querySelector('.panel-heading').innerHTML='<div><span class="section-kicker">MATERIAL ALTERNATIVES</span><h2>M30 mix candidates</h2><p class="panel-subtitle">Compare project-specific product data. Options remain unscored without supplier factors and engineer validation.</p></div><span class="mix-warning">UNSCORED UNTIL SOURCED</span>';
     $('material-alternatives').querySelector('.alternative-detail').innerHTML=`<div class="mix-context"><label class="field">Application<select id="mix-application"><option>Structural concrete</option><option>Slab / floor</option><option>Foundation</option><option>Non-structural</option></select></label><label class="field">Exposure<select id="mix-exposure"><option>General</option><option>Coastal / chloride</option><option>Sulphate</option><option>Other project exposure</option></select></label><label class="field">Project concrete volume <span class="unit">m³</span><input id="mix-project-volume" type="number" min="0" step="any" placeholder="Required to calculate project totals" /></label><div class="constraint-message"><strong>Eligibility needs project review</strong><span>Verify design strength, curing, durability, IS code requirements and supplier mix data with the project engineer. No universal GGBS cap is applied.</span></div></div><div class="mix-table-wrap"><table class="mix-table"><thead><tr><th>Candidate</th><th>Indicative composition</th><th>Carbon result</th><th>Validation</th></tr></thead><tbody>${DATA.mixCandidates.map((m,i)=>`<tr><td><strong>${String.fromCharCode(65+i)} · ${m.label}</strong></td><td>${m.blend}</td><td>Unscored · factor not supplied</td><td>Project / engineer check</td></tr>`).join('')}</tbody></table></div><div class="alternative-detail"><strong>Evidence needed</strong><p>Enter a supplier-specific EPD or declared A1–A3 factor for a like-for-like strength class, curing regime, exposure and functional unit. This screen does not assume that a mix is eligible or quantify savings.</p></div>`;
     $('method-detail').innerHTML='<div><strong>Prototype calculation</strong><p>Gross floor area = floor plate × floors. Material quantities = gross floor area × editable material-intensity assumptions. Product-stage A1–A3 = Σ(quantity × illustrative factor). B6 and other lifecycle modules are not included in a combined whole-life total without compatible sourced inputs.</p></div><div><strong>Assumption status</strong><p>All demo quantity intensities, material factors, city energy intensities, grid factors, and intervention effects are illustrative assumptions with low confidence. The sensitivity band is a simple ±25% prototype range, not a statistical uncertainty analysis. Replace with traceable project data before decisions.</p></div><div><strong>India context</strong><p>BEE ECSBC 2024 Appendix 6 is included as methodology context for embodied-carbon reporting. This prototype makes no compliance claim.</p><a href="https://beeindia.gov.in/WriteReadData/L45218/7534511430467336.pdf" target="_blank" rel="noreferrer">BEE · ECSBC 2024 ↗</a></div>';
-    document.addEventListener('input',markInputsChanged);
-    document.addEventListener('change',markInputsChanged);
+    document.addEventListener('input',event=>{if(event.target.matches('#floor-area,#floors'))updateEstimatorArea();markInputsChanged();});
+    document.addEventListener('change',event=>{if(event.target.matches('#floor-area,#floors'))updateEstimatorArea();markInputsChanged();});
     $('calculate-button').addEventListener('click',()=>calculate({persist:true}));
     $('structure').addEventListener('change',()=>{
       const assumptions=structures[$('structure').value]||[];
@@ -112,11 +113,19 @@
       return `<div><b>${esc(m.name)}</b><span>Active factor: ${esc(active)} kgCO₂e/kg · A1–A3</span><span>Catalog default: ${m.factor} kgCO₂e/kg · illustrative / unverified</span><span>Status: ${esc(status)}</span><span>Source: ${esc(sourceName||'Not supplied')} · ${esc(source||'URL missing')}</span><span>Geography / year: ${esc(region||'Not supplied')} · ${esc(year||'Not supplied')}</span></div>`;
     }).join('')+'</div>';
   }
-  function applyQuantities(options={}){
+  function projectGrossFloorArea(){
     const floorPlate=Number($('floor-area').value), floors=Number($('floors').value);
-    const area=Number.isFinite(floorPlate)&&floorPlate>0&&Number.isInteger(floors)&&floors>0?floorPlate*floors:null;
-    materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); if(options.onlyBlank&&qtyField?.value.trim()!=='')return; const raw=intensity?.value; const quantity=area==null?null:raw===''||raw==null?0:Number(raw)*area; if(qtyField)qtyField.value=Number.isFinite(quantity)?String(quantity):'';});
-    $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; markInputsChanged();
+    return Number.isFinite(floorPlate)&&floorPlate>0&&Number.isInteger(floors)&&floors>0?floorPlate*floors:null;
+  }
+  function updateEstimatorArea(){
+    $('estimator-area').textContent=`Gross floor area: ${fmt(projectGrossFloorArea(),1)} m²`;
+  }
+  function applyQuantities(options={}){
+    const area=projectGrossFloorArea();
+    updateEstimatorArea();
+    if(area==null){$('estimator-status').textContent='Enter a valid floor plate area and number of floors in Building snapshot before applying estimates.';return;}
+    materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); if(options.onlyBlank&&qtyField?.value.trim()!=='')return; const raw=intensity?.value; const quantity=raw===''||raw==null?0:Number(raw)*area; if(qtyField)qtyField.value=Number.isFinite(quantity)?String(quantity):'';});
+    $('estimator-status').textContent=options.onlyBlank?'Filled empty quantity rows from the area estimates. Review or edit totals before calculating carbon.':'Applied area estimates to the quantity table below. Review or edit totals before calculating carbon.'; markInputsChanged();
   }
 
   function addReplacementRow(){
@@ -145,6 +154,7 @@
 
   function calculate(options={}){
     if(!document.querySelector('[data-q="concrete-opc"]'))return;
+    updateEstimatorArea();
 
     // The explicit Calculate action may fill estimated quantities, but never
     // overwrites a quantity the user has already entered.
