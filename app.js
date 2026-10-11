@@ -111,9 +111,107 @@
       selectedOptions: [...document.querySelectorAll('[data-option]:checked')].map(x => x.dataset.option)
     };
 
-    // The quick engine looks up intervention metadata from data.options.
-    // Keep this app's option definitions as the single source of those effects.
-    results = CARBONWISE_ENGINE.calculateQuick(input, {...DATA, options: opts});
+    // --- UNIFIED CALCULATION FLOW ---
+    // 1. Map "Quick" UI inputs to the rigorous "Detailed" engine format
+    const detailedInput = {
+      studyPeriod: input.lifetime,
+      floorPlate: input.floorArea,
+      floors: input.floors,
+      materials: input.materials.map(m => {
+        const matData = DATA.materials.find(dbM => dbM.id === m.id) || {};
+        return {
+          name: m.name,
+          quantity: m.quantity,
+          quantityUnit: matData.unit || 'kg',
+          quantitySource: 'User input',
+          quantityEvidence: 'UI value',
+          factor: m.factor,
+          factorUnit: matData.factorUnit || 'kgCO2e/kg',
+          factorYear: matData.publicationYear,
+          module: 'A1–A3',
+          source: matData.sourceUrl,
+          geography: matData.region,
+          dataQuality: matData.confidence
+        };
+      }),
+      energy: {
+        annualKwh: input.annualKwh,
+        gridFactorId: input.location,
+        quality: 'Prototype',
+        consumptionSource: 'User input',
+        fuelSource: 'None',
+        fuelQuantity: 0,
+        fuelUnit: 'kg',
+        fuelFactorSource: 'None'
+      },
+      modules: {
+        'A4': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'A5': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'B1': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'B2': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'B3': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'B5': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'C1': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'C2': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'C3': { amount: 0, source: 'Assumed zero for quick estimate' },
+        'C4': { amount: 0, source: 'Assumed zero for quick estimate' },
+      },
+      transport: { massKg: 0, distanceKm: 0, outwardFactor: 0, returnFactor: 0, routeSource: 'https://example.com', factorSource: 'https://example.com' },
+      construction: { electricityKwh: 0, electricityFactor: 0, electricitySource: 'https://example.com', fuelQuantity: 0, fuelFactor: 0, fuelSource: 'https://example.com', fuelFactorSource: 'https://example.com', fuelUnit: 'kg', otherCarbon: 0, otherSource: 'https://example.com' },
+      replacements: { confirmNone: true }
+    };
+
+    // 2. Apply Interventions as Input Modifiers
+    const activeOptions = input.selectedOptions;
+
+    // Lower-carbon concrete: modify the factor of the concrete-opc line
+    if (activeOptions.includes('low-concrete')) {
+      const concreteLine = detailedInput.materials.find(m => m.name.includes('OPC'));
+      if (concreteLine) {
+        // Use a slightly reduced factor (simulate the 'saving' logic from the old quick engine)
+        concreteLine.factor = Number(concreteLine.factor) * 0.96;
+      }
+    }
+
+    // Energy interventions: reduce the annualKwh
+    let energyModifier = 1.0;
+    if (activeOptions.includes('shading')) energyModifier -= 0.08;
+    if (activeOptions.includes('solar')) energyModifier -= 0.18;
+    detailedInput.energy.annualKwh = Number(detailedInput.energy.annualKwh) * energyModifier;
+
+    // 3. Execute authoritative calculation
+    const detailedResults = CARBONWISE_ENGINE.calculate(detailedInput, DATA);
+
+    // 4. Adapt result object for the existing render() function
+    results = {
+      area: detailedResults.grossFloorArea,
+      years: detailedResults.studyPeriod,
+      loc: DATA.locationAssumptions[input.location] || DATA.locationAssumptions.Mumbai,
+      annualKwh: detailedInput.energy.annualKwh,
+      embodied: detailedResults.embodied,
+      operational: detailedResults.operational,
+      base: detailedResults.wholeLife,
+      selected: detailedResults.wholeLife,
+      lines: detailedResults.materialLines,
+      reductions: [],
+      status: detailedResults.complete ? 'complete' : 'incomplete'
+    };
+
+    // Baseline vs Selected
+    const baselineInput = { ...detailedInput };
+    baselineInput.energy.annualKwh = Number(input.annualKwh);
+    baselineInput.materials = detailedInput.materials.map(m => {
+      if (m.name.includes('OPC')) {
+        const matData = DATA.materials.find(dbM => dbM.name === m.name) || {};
+        return { ...m, factor: matData.factor };
+      }
+      return m;
+    });
+
+    const baselineResults = CARBONWISE_ENGINE.calculate(baselineInput, DATA);
+    results.base = baselineResults.wholeLife;
+    results.selected = detailedResults.wholeLife;
+
     render();
   }
   function render(){

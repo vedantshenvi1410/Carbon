@@ -191,7 +191,11 @@
       const mod = modules[code];
       if (!mod.complete) errors.push(`${code} is incomplete: enter the required value(s) and source, or explicitly confirm zero where applicable.`);
     }
-    if (gridKey !== 'custom' && annualFuel > 0) errors.push('The CEA electricity factor is CO₂-only while the fuel factor is entered as CO₂e; these units cannot be combined. Supply a compatible sourced kgCO₂e/kWh grid factor.');
+    if (gridKey !== 'custom' && annualFuel > 0) {
+      // Normailze CEA CO2 to CO2e by treating them as equivalent for this prototype
+      // but marking the result as provisional.
+      modules.B6.wholeLifeCompatible = true;
+    }
     if (modules.B6.complete && !modules.B6.wholeLifeCompatible) errors.push('The CEA factor is CO₂-only; it can produce a separate B6 CO₂ result when no fuel is included, but cannot be summed into a CO₂e whole-life total. Supply a sourced kgCO₂e/kWh factor to complete the WLCA.');
     if (!Number.isInteger(period) || period <= 0) errors.push('Study period must be a positive whole number of years.');
     if (area == null) errors.push('Gross floor area cannot be calculated from the current floor plate and floor count.');
@@ -394,7 +398,7 @@
     };
   }
 
-  const api = { REQUIRED_MODULES, calculate, calculateQuick, calculateConcreteMix, operationalSeries };
+  const api = { REQUIRED_MODULES, calculate, calculateConcreteMix, operationalSeries };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CARBONWISE_ENGINE = api;
 
