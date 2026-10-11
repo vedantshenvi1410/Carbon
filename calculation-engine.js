@@ -164,12 +164,19 @@
       ? { value: nullableNumber(energy.customFactor), unit: energy.customUnit, region: energy.customRegion, boundary: energy.customBoundary, source: energy.customSourceName, url: energy.customSource, publicationYear: nullableNumber(energy.customYear), status: energy.customTemporal, metricUnit: energy.customUnit, includesTransmissionDistributionLosses: energy.customLosses === 'yes' ? true : energy.customLosses === 'no' ? false : null, lossNote: energy.customLosses === 'unknown' ? 'Transmission/distribution losses not identified.' : '' }
       : data?.electricityFactors?.[gridKey] || null;
 
-    const energyUseComplete = isNum(annualKwh) && gridRecord && isNum(gridRecord.value) && hasText(gridRecord.source) && hasUrl(gridRecord.url) && ['kgCO2/kWh', 'kgCO2e/kWh'].includes(gridRecord.metricUnit) && Number.isInteger(gridRecord.publicationYear) && gridRecord.publicationYear >= 1900 && hasText(gridRecord.region) && hasText(gridRecord.boundary) && hasText(gridRecord.status) && hasText(energy.quality) && hasText(energy.consumptionSource) && annualFuelInputComplete && (annualFuel === 0 || (energy.fuelMetricUnit === gridRecord.metricUnit && hasText(energy.fuelUnit)));
+    const gridFactorUsable = Boolean(gridRecord && isNum(nullableNumber(gridRecord.value)) && ['kgCO2/kWh', 'kgCO2e/kWh'].includes(gridRecord.metricUnit) && hasText(gridRecord.source) && hasUrl(gridRecord.url) && Number.isInteger(gridRecord.publicationYear) && gridRecord.publicationYear >= 1900 && hasText(gridRecord.region) && hasText(gridRecord.boundary) && hasText(gridRecord.status));
+    const fuelMetricCompatible = annualFuel === 0 || (energy.fuelMetric === 'CO2e' && gridRecord?.metricUnit === 'kgCO2e/kWh' && hasText(energy.fuelUnit));
+    const energyUseComplete = isNum(annualKwh) && gridFactorUsable && hasText(energy.quality) && hasUrl(energy.consumptionSource) && annualFuelInputComplete && fuelMetricCompatible;
+    const illustrativeFactor = nullableNumber(energy.illustrativeGridFactor);
+    const illustrativeFactorValid = isNum(illustrativeFactor) && energy.illustrativeGridFactorUnit === 'kgCO2/kWh' && hasText(energy.illustrativeGridFactorLabel) && hasText(energy.illustrativeGridFactorGeography);
+    const consumptionUsable = isNum(annualKwh) && (annualKwh > 0 || (hasText(energy.quality) && hasUrl(energy.consumptionSource)));
+    const canCalculateElectricity = consumptionUsable && Number.isInteger(period) && period > 0 && (gridFactorUsable || illustrativeFactorValid);
 
     const scenarios = Object.create(null);
-    const currentFactor = gridRecord?.value ?? null;
-    if (energyUseComplete) {
-      const annualFuelCarbon = annualFuel === 0 ? 0 : annualFuel * annualFuelFactor;
+    const currentFactor = gridFactorUsable ? nullableNumber(gridRecord.value) : (illustrativeFactorValid ? illustrativeFactor : null);
+    const fuelIncluded = annualFuelInputComplete && fuelMetricCompatible && annualFuel > 0;
+    if (canCalculateElectricity) {
+      const annualFuelCarbon = fuelIncluded ? annualFuel * annualFuelFactor : 0;
       scenarios.constant = operationalSeries(annualKwh, currentFactor, 0, period, annualFuelCarbon);
       const moderateRate = nullableNumber(energy.moderateAnnualReduction);
       const highRate = nullableNumber(energy.highAnnualReduction);
@@ -185,12 +192,20 @@
     modules.B6 = {
       value: selectedSeries?.total ?? null,
       formula: `Σ((year n electricity kWh × year n grid factor ${gridRecord?.metricUnit || 'kgCO₂/kWh'}) + annual fuel use × sourced fuel factor)`,
-      source: [gridRecord?.source, energy.consumptionSource, energy.fuelSource, energy.fuelFactorSource].filter(Boolean).join('; '),
-      complete: selectedSeries != null,
-      metricUnit: gridKey !== 'custom' && annualFuel > 0 ? 'incompatible' : gridRecord?.metricUnit || 'kgCO2/kWh',
+      source: [gridFactorUsable ? gridRecord?.source : '', gridFactorUsable ? gridRecord?.url : '', energy.consumptionSource, energy.fuelSource, energy.fuelFactorSource].filter(Boolean).join('; '),
+      complete: energyUseComplete && selectedSeries != null,
+      status: energyUseComplete && selectedSeries != null ? 'complete' : selectedSeries != null ? 'provisional' : 'incomplete',
+      warnings: selectedSeries != null && !energyUseComplete ? [
+        !gridFactorUsable && illustrativeFactorValid ? 'Illustrative, unsourced location electricity factor is used; result is CO₂, not CO₂e.' : '',
+        !hasUrl(energy.consumptionSource) ? 'Annual electricity consumption source is missing; entered consumption is treated as a user-provided preliminary input.' : '',
+        !annualFuelInputComplete ? 'Operational fuel is missing or lacks compatible source data and is excluded from this electricity-only result.' : '',
+        annualFuel > 0 && !fuelMetricCompatible ? 'Fuel CO₂e cannot be combined with the selected electricity-factor metric; fuel is excluded.' : '',
+        'This provisional B6 result is excluded from the CO₂e whole-life total.'
+      ].filter(Boolean) : [],
+      metricUnit: gridRecord?.metricUnit || energy.illustrativeGridFactorUnit || 'kgCO2/kWh',
       wholeLifeCompatible: gridRecord?.metricUnit === 'kgCO2e/kWh',
-      annualEnergyAssumption: 'Annual electricity and fuel consumption are held constant for every study year.',
-      gridRecord, series: selectedSeries
+      annualEnergyAssumption: energyUseComplete ? 'Annual electricity and fuel consumption are held constant for every study year.' : `Entered annual electricity consumption is held constant; operational fuel is ${fuelIncluded ? 'included' : 'excluded'} in this preliminary result.`,
+      gridRecord: gridRecord || (illustrativeFactorValid ? { value: illustrativeFactor, metricUnit: energy.illustrativeGridFactorUnit, source: '', url: '', assumptionLabel: energy.illustrativeGridFactorLabel, region: energy.illustrativeGridFactorGeography || '', status: 'illustrative, unsourced' } : null), series: selectedSeries
     };
 
     for (const code of REQUIRED_MODULES) {
@@ -289,7 +304,12 @@
       const factor = firstYearFactor * Math.pow(1 - annualReduction, year - 1);
       annual.push({ year, energyKwh: annualKwh, factorKgPerKwh: factor, fuelCarbonKg: annualFuelCarbon, carbonKg: annualKwh * factor + annualFuelCarbon });
     }
-    return { total: annual.reduce((sum, row) => sum + row.carbonKg, 0), annual };
+    let cumulativeKg = 0;
+    for (const row of annual) {
+      cumulativeKg += row.carbonKg;
+      row.cumulativeKg = cumulativeKg;
+    }
+    return { total: cumulativeKg, annual };
   }
 
   function fuelUnitMatches(unit, factorUnit, supportedUnits) {

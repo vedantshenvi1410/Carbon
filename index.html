@@ -108,11 +108,11 @@
                   <label class="field">Consumption data quality<select id="energy-quality"><option value="">Choose provenance</option><option>Measured</option><option>Energy model</option><option>Estimated</option></select></label>
                   <label class="field field-wide">Consumption / model source URL<input id="energy-source" type="url" placeholder="Meter record, model or estimate basis" /></label>
                   <label class="field">Annual operational fuel <input id="annual-fuel" type="number" min="0" step="any" placeholder="Enter fuel use or sourced zero" /></label>
-                  <label class="field">Fuel unit<input id="annual-fuel-unit" placeholder="e.g. litre, kWh" /></label>
+                  <label class="field">Fuel unit<select id="annual-fuel-unit"><option value="">Choose fuel unit</option><option value="kg">kg</option><option value="L">L</option><option value="MJ">MJ</option></select></label>
                   <label class="field">Fuel factor <span class="unit">kgCO₂e/unit</span><input id="annual-fuel-factor" type="number" min="0" step="any" /></label>
                   <label class="field">Fuel factor source URL<input id="annual-fuel-factor-source" type="url" /></label>
                   <label class="field">Fuel consumption source URL<input id="annual-fuel-source" type="url" /></label>
-                  <label class="field field-wide">Grid emission factor record<select id="grid-factor-kind"><option value="cea_india_weighted_average_fy2025_26">CEA India FY 2025–26 weighted average · kgCO₂/kWh · CO₂ only</option><option value="custom">Use sourced project / grid factor · kgCO₂e/kWh</option></select></label>
+                  <label class="field field-wide">Grid emission factor record<select id="grid-factor-kind"><option value="cea_india_weighted_average_fy2025_26">CEA India FY 2025–26 · CO₂ only (factor record unavailable; illustrative location factor used)</option><option value="custom">Use sourced project / grid factor · kgCO₂e/kWh</option></select></label>
                   <label class="field">Custom EF <span class="unit">kgCO₂e/kWh</span><input id="custom-grid-factor" type="number" min="0" step="any" placeholder="Required for CO₂e total" /></label>
                   <label class="field">Custom EF source URL<input id="custom-grid-source" type="url" placeholder="Required for CO₂e total" /></label>
                   <label class="field">Factor publication year<input id="custom-grid-year" type="number" min="1900" max="2100" step="1" /></label>

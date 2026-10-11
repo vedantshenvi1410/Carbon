@@ -135,13 +135,29 @@
       }),
       energy: {
         annualKwh: input.annualKwh,
-        gridFactorId: input.location,
-        quality: 'Prototype estimate',
-        consumptionSource: '',
-        fuelSource: 'None',
-        fuelQuantity: 0,
-        fuelUnit: 'kg',
-        fuelFactorSource: 'None'
+        gridFactorId: $('grid-factor-kind').value,
+        quality: $('energy-quality').value,
+        consumptionSource: $('energy-source').value,
+        annualFuel: $('annual-fuel').value,
+        fuelUnit: $('annual-fuel-unit').value,
+        fuelFactor: $('annual-fuel-factor').value,
+        fuelFactorUnit: ({kg:'kgCO2e/kg',L:'kgCO2e/L',MJ:'kgCO2e/MJ'})[$('annual-fuel-unit').value] || '',
+        fuelMetric: 'CO2e',
+        fuelSource: $('annual-fuel-source').value,
+        fuelFactorSource: $('annual-fuel-factor-source').value,
+        illustrativeGridFactor: $('grid-factor-kind').value === 'custom' ? null : DATA.locationAssumptions[input.location]?.grid,
+        illustrativeGridFactorUnit: 'kgCO2/kWh',
+        illustrativeGridFactorLabel: input.location && $('grid-factor-kind').value !== 'custom' ? `Carbonwise illustrative location assumption (${input.location}; unverified)` : '',
+        illustrativeGridFactorGeography: input.location && $('grid-factor-kind').value !== 'custom' ? input.location : '',
+        customFactor: $('custom-grid-factor').value,
+        customUnit: 'kgCO2e/kWh',
+        customRegion: $('custom-grid-region').value,
+        customBoundary: 'B6',
+        customSourceName: $('custom-grid-source').value ? 'User-entered grid factor record' : '',
+        customSource: $('custom-grid-source').value,
+        customYear: $('custom-grid-year').value,
+        customTemporal: $('custom-grid-temporal').value,
+        customLosses: 'unknown'
       },
       replacements: { confirmNone: false }
     };
@@ -158,6 +174,10 @@
       annualKwh: Number.isFinite(Number(input.annualKwh)) && input.annualKwh !== '' ? Number(input.annualKwh) : null,
       embodied: detailedResults.modules['A1–A3'].value,
       operational: detailedResults.operational,
+      operationalStatus: detailedResults.modules.B6.status,
+      operationalMetricUnit: detailedResults.modules.B6.metricUnit,
+      operationalSeries: detailedResults.modules.B6.series,
+      operationalWarnings: detailedResults.modules.B6.warnings,
       base: detailedResults.wholeLife,
       selected: input.selectedOptions.length ? null : detailedResults.wholeLife,
       lines: detailedResults.materialLines,
@@ -174,8 +194,8 @@
     const r=results,red=r.base!=null&&r.selected!=null&&r.base>0?100*(r.base-r.selected)/r.base:null, intensity=r.area&&r.base!=null?r.base/r.area:null;
     $('crumb-project').textContent=$('project-name').value||'Demo Residence';$('side-project').textContent=$('crumb-project').textContent;
     $('print-project-meta').textContent=`${$('crumb-project').textContent} · ${$('location').value} · illustrative prototype`; $('print-building-meta').textContent=`${$('building-type').selectedOptions[0]?.text||'Residential'} · ${fmt(r.area,0)} m² GFA · ${r.years}-year estimate`;
-    $('study-stamp').textContent=r.years??'—';$('lifecycle-total').textContent=fmt(t(r.base));$('embodied-total').textContent=fmt(t(r.embodied));$('operational-total').textContent=fmt(t(r.operational));$('operational-unit').textContent='tCO₂';$('intensity-value').textContent=`${fmt(intensity,1)} kgCO₂e / m²`;
-    $('embodied-share').textContent='A1–A3 product-stage subtotal · partial scope';$('annual-energy').textContent=`${fmt(r.annualKwh,0)} kWh / year`;$('annual-grid').textContent=r.loc?`Illustrative ${r.loc.grid} kgCO₂/kWh · factor provenance unavailable; B6 not scored`:'Grid factor unavailable: select a location with traceable factor data';
+    $('study-stamp').textContent=r.years??'—';$('lifecycle-total').textContent=fmt(t(r.base));$('embodied-total').textContent=fmt(t(r.embodied));$('operational-total').textContent=fmt(t(r.operational));$('operational-unit').textContent=`t${r.operationalMetricUnit==='kgCO2e/kWh'?'CO₂e':'CO₂'}`;$('intensity-value').textContent=`${fmt(intensity,1)} kgCO₂e / m²`;
+    $('embodied-share').textContent='A1–A3 product-stage subtotal · partial scope';$('annual-energy').textContent=`${fmt(r.annualKwh,0)} kWh / year`;$('annual-grid').textContent=r.operationalStatus==='provisional'?`PROVISIONAL · illustrative ${r.loc?.grid ?? '—'} kgCO₂/kWh for ${$('location').value}; fuel excluded`:(r.operationalStatus==='complete'?'B6 calculated with sourced factor and inputs':'Enter annual electricity and select a location or complete a sourced grid factor');
     $('metric-uncertainty').textContent=r.base==null?'Whole-life total unavailable: required lifecycle modules and compatible sourced factors are missing.':`Illustrative sensitivity range ${fmt(t(r.base*.75),1)}–${fmt(t(r.base*1.25),1)} tCO₂e (±25%) · low confidence`;$('lifecycle-status').textContent=r.status==='complete'?'COMPLETE FOR DECLARED SCOPE':'PARTIAL · INPUTS MISSING';$('op-final-year').textContent=`YEAR ${r.years??'—'}`;
     $('profile-intensity').innerHTML=`${fmt(intensity,1)} <small>kgCO₂e/m²</small>`;$('profile-energy').innerHTML=`${fmt(r.annualKwh,0)} <small>kWh/year</small>`;$('profile-lifetime').innerHTML=`${r.years??'—'} <small>years</small>`;$('scope-caption').textContent='PRODUCT-STAGE A1–A3 PARTIAL ESTIMATE · B6 AND OTHER A–C MODULES UNAVAILABLE';
     $('donut-total').textContent=fmt(t(r.base));const ep=r.base!=null&&r.embodied!=null?r.embodied/r.base*100:null;$('donut').style.background=ep==null?'#edf1ef':`conic-gradient(#739886 0 ${ep}%,#c9dcd2 ${ep}% 100%)`;$('donut-legend').innerHTML=ep==null?'<div class="legend-row"><i></i><span>Whole-life shares unavailable</span><strong>—</strong></div>':`<div class="legend-row"><i></i><span>Non-B6 A–C lifecycle</span><strong>${fmt(ep,1)}%</strong></div><div class="legend-row"><i></i><span>Operational · B6</span><strong>${fmt(100-ep,1)}%</strong></div>`;
@@ -186,11 +206,17 @@
     $('confidence-value').textContent='LOW';$('quality-project-bar').style.width='0%';$('quality-source-bar').style.width='0%';$('quality-missing-bar').style.width='100%';$('quality-legend').innerHTML='<span><i class="q-assumed"></i><strong>100%</strong> preliminary assumptions · low confidence</span>';$('quality-foot').textContent='Replace demo assumptions with project quantities, supplier EPDs, and cited energy data.';
     $('optimised-total').textContent=fmt(t(r.selected));$('reduction-chip').textContent=red==null?'UNSCORED':`${fmt(red,1)}% reduction`; $('opportunity-count').textContent=String(r.reductions.length);
     r.reductions.forEach(x=>{const el=document.querySelector(`[data-saving="${x.id}"]`);if(el)el.textContent='Unscored · intervention inputs and impacts not modelled';});
-    $('comparison-summary').innerHTML=`<div><small>BASELINE · PARTIAL SCOPE</small><strong>${fmt(t(r.base))} <i>tCO₂e</i></strong><span>Product-stage subtotal ${fmt(t(r.embodied))} t · B6 ${fmt(t(r.operational))}</span></div><div><small>SELECTED DESIGN</small><strong>${fmt(t(r.selected))} <i>tCO₂e</i></strong><span>${r.reductions.length?esc(r.reductions.map(x=>x.name).join(' · ')):'No interventions selected'}</span></div><div class="avoided-stat"><small>ESTIMATED CHANGE</small><strong>${r.base!=null&&r.selected!=null?`${fmt(t(r.base-r.selected),2)} tCO₂e · ${fmt(red,1)}%`:'Unscored'}</strong><span>Requires comparable complete totals and validated intervention inputs.</span></div>`;
-    $('lifecycle-chart').innerHTML=[['A1–A3 · product',r.embodied],['B6 · operational',r.operational]].map(x=>`<div class="stacked-row"><span>${x[0]}</span><div class="stacked-track"><i class="stack-embodied" style="width:${r.base!=null&&x[1]!=null?x[1]/r.base*100:0}%"></i></div><strong>${fmt(t(x[1]),2)} t</strong></div>`).join('')+'<div class="chart-legend">Unavailable modules are not treated as zero; no whole-life total is reported.</div>';
+    $('comparison-summary').innerHTML=`<div><small>BASELINE · PARTIAL SCOPE</small><strong>${fmt(t(r.base))} <i>tCO₂e</i></strong><span>Product-stage subtotal ${fmt(t(r.embodied))} tCO₂e · B6 ${fmt(t(r.operational))} t${r.operationalMetricUnit==='kgCO2e/kWh'?'CO₂e':'CO₂'}</span></div><div><small>SELECTED DESIGN</small><strong>${fmt(t(r.selected))} <i>tCO₂e</i></strong><span>${r.reductions.length?esc(r.reductions.map(x=>x.name).join(' · ')):'No interventions selected'}</span></div><div class="avoided-stat"><small>ESTIMATED CHANGE</small><strong>${r.base!=null&&r.selected!=null?`${fmt(t(r.base-r.selected),2)} tCO₂e · ${fmt(red,1)}%`:'Unscored'}</strong><span>Requires comparable complete totals and validated intervention inputs.</span></div>`;
+    $('lifecycle-chart').innerHTML=[['A1–A3 · product',r.embodied,'CO₂e'],['B6 · operational',r.operational,r.operationalMetricUnit==='kgCO2e/kWh'?'CO₂e':'CO₂']].map(x=>`<div class="stacked-row"><span>${x[0]}</span><div class="stacked-track"><i class="stack-embodied" style="width:${r.base!=null&&x[1]!=null?x[1]/r.base*100:0}%"></i></div><strong>${fmt(t(x[1]),2)} tCO₂${x[2]==='CO₂e'?'e':''}</strong></div>`).join('')+'<div class="chart-legend">Modules are shown separately; provisional CO₂ B6 is not comparable with CO₂e A1–A3 and is excluded from the whole-life total.</div>';
     $('material-chart').innerHTML=r.lines.map(x=>`<div class="pareto-row"><span>${x.name}</span><div><i style="width:${r.embodied?x.carbon/r.embodied*100:0}%"></i></div><strong>${fmt(t(x.carbon),2)} t</strong></div>`).join('');
     $('scenario-chart').innerHTML=`<div class="scenario-row unscored"><span>Baseline</span><div><i style="width:0%"></i></div><strong>${fmt(t(r.base),2)} t</strong></div><div class="scenario-row unscored"><span>Selected</span><div><i style="width:0%"></i></div><strong>${fmt(t(r.selected),2)} t</strong></div>`;
-    $('lifetime-chart').innerHTML='<p class="empty-note">Annual emissions unavailable: the grid factor record lacks traceable source metadata and an explicit compatible CO₂e unit.</p>';
+    const opSeries=r.operationalSeries?.annual||[];
+    if(opSeries.length){
+      const max=Math.max(...opSeries.map(row=>row.cumulativeKg),1),pointPairs=opSeries.map((row,index)=>`${opSeries.length===1?160:index/(opSeries.length-1)*320},${42-row.cumulativeKg/max*38}`),points=pointPairs.join(' '),linePath=pointPairs.map((point,index)=>`${index?'L':'M'} ${point}`).join(' ');
+      $('lifetime-chart').innerHTML=`<svg viewBox="0 0 320 45" preserveAspectRatio="none" role="img" aria-label="Cumulative provisional operational electricity emissions in kilograms of carbon dioxide"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2"/></svg><p class="empty-note">Year 1: ${fmt(t(opSeries[0].carbonKg),3)} tCO₂ · study-period electricity: ${fmt(t(r.operational),2)} tCO₂. ${esc((r.operationalWarnings||[]).join(' '))}</p>`;
+      const annualMax=Math.max(...opSeries.map(row=>row.carbonKg),1),annualPairs=opSeries.map((row,index)=>`${opSeries.length===1?160:index/(opSeries.length-1)*320},${42-row.carbonKg/annualMax*38}`),annualLine=annualPairs.map((point,index)=>`${index?'L':'M'} ${point}`).join(' '),areaPath=`M 0,45 ${annualPairs.map(point=>`L ${point}`).join(' ')} L 320,45 Z`;
+      $('op-area').setAttribute('d',areaPath);$('op-line').setAttribute('d',annualLine);
+    }else{$('lifetime-chart').innerHTML='<p class="empty-note">B6 unavailable: enter annual electricity consumption and select a location with an illustrative grid assumption, or provide a complete sourced grid-factor record. A zero value needs a consumption source and quality selection.</p>'; $('op-area').setAttribute('d','');$('op-line').setAttribute('d','');}
     $('reduction-table').innerHTML=(r.reductions.length?r.reductions.map(x=>`<div class="reduction-row"><span>${esc(x.name)}</span><strong>Unscored</strong><small>Intervention inputs and added impacts are not yet modelled.</small></div>`).join(''):'<p class="empty-note">Choose design interventions above; they will remain unscored until the affected inputs and added lifecycle impacts are supplied.</p>')+`<div class="reduction-row reduction-total"><span>Total reduction</span><strong>${r.base!=null&&r.selected!=null?fmt(t(r.base-r.selected),2)+' tCO₂e':'Unscored'}</strong></div>`;
     $('cost-inputs').innerHTML=r.reductions.map(x=>`<label>${esc(x.name)}<span>₹ <input type="number" min="0" step="1" data-cost="${x.id}" placeholder="Enter quote" /></span></label>`).join('')||'<p class="empty-note">Select options and add project quotes to compare cost and carbon.</p>';renderCosts();
     const budget=Number($('carbon-budget').value);$('budget-view').innerHTML=$('carbon-budget').value===''?'<p class="empty-note">Enter a lifecycle target to compare it with the prototype estimate.</p>':r.selected==null?'<p class="empty-note">Target comparison unavailable until a complete compatible scenario total is calculated.</p>':`<div class="budget-numbers"><span>Target<strong>${fmt(budget,1)} t</strong></span><span>Selected<strong>${fmt(t(r.selected),1)} t</strong></span></div><div class="budget-track"><i style="width:${Math.min(100,t(r.selected)/Math.max(budget,.01)*100)}%"></i></div><div class="budget-state ${t(r.selected)<=budget?'within-budget':''}">${t(r.selected)<=budget?'WITHIN TARGET':`${fmt(t(r.selected)-budget,1)} t over target`}</div>`;

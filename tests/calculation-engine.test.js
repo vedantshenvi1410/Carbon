@@ -93,6 +93,76 @@ test('CO2-only B6 may be reported separately but cannot complete CO2e whole-life
   assert.equal(result.wholeLife, null);
 });
 
+test('entered annual electricity calculates a provisional B6 from an explicitly selected illustrative location', () => {
+  const input = fullInput({ energy: {
+    annualKwh: 100, gridFactorId: '', annualFuel: null,
+    illustrativeGridFactor: 0.727, illustrativeGridFactorUnit: 'kgCO2/kWh',
+    illustrativeGridFactorLabel: 'Illustrative test location assumption', illustrativeGridFactorGeography: 'Test region'
+  } });
+  const result = engine.calculate(input, {});
+  assert.equal(result.modules.B6.value, 145.4);
+  assert.equal(result.modules.B6.status, 'provisional');
+  assert.equal(result.modules.B6.complete, false);
+  assert.equal(result.modules.B6.metricUnit, 'kgCO2/kWh');
+  assert.match(result.modules.B6.warnings.join(' '), /fuel.*excluded/i);
+  assert.equal(result.wholeLife, null);
+});
+
+test('B6 remains unavailable when annual consumption or selected location is missing', () => {
+  const location = { illustrativeGridFactor: 0.727, illustrativeGridFactorUnit: 'kgCO2/kWh', illustrativeGridFactorLabel: 'Illustrative', illustrativeGridFactorGeography: 'Test' };
+  assert.equal(engine.calculate(fullInput({ energy: { annualKwh: '', ...location } }), {}).modules.B6.value, null);
+  assert.equal(engine.calculate(fullInput({ energy: { annualKwh: 100 } }), {}).modules.B6.value, null);
+});
+
+test('genuine zero annual electricity needs provenance and stays distinct from missing', () => {
+  const factorAssumption = { illustrativeGridFactor: 0.727, illustrativeGridFactorUnit: 'kgCO2/kWh', illustrativeGridFactorLabel: 'Illustrative', illustrativeGridFactorGeography: 'Test' };
+  const unsubstantiated = engine.calculate(fullInput({ energy: { annualKwh: 0, ...factorAssumption } }), {});
+  assert.equal(unsubstantiated.modules.B6.value, null);
+  const evidenced = engine.calculate(fullInput({ energy: { annualKwh: 0, quality: 'Measured', consumptionSource: source, ...factorAssumption } }), {});
+  assert.equal(evidenced.modules.B6.value, 0);
+  assert.equal(evidenced.modules.B6.status, 'provisional');
+  assert.equal(evidenced.wholeLife, null);
+});
+
+test('a complete user-supplied CO2e grid-factor record calculates sourced electricity B6', () => {
+  const input = fullInput({ energy: {
+    annualKwh: 100, gridFactorId: 'custom', quality: 'Measured', consumptionSource: source,
+    annualFuel: 0, fuelSource: source, fuelUnit: 'MJ', fuelFactorSource: '',
+    customFactor: 0.5, customUnit: 'kgCO2e/kWh', customRegion: 'Test region', customBoundary: 'B6',
+    customSourceName: 'Synthetic test fixture', customSource: source, customYear: 2025,
+    customTemporal: 'Current / historical', customLosses: 'unknown'
+  } });
+  const result = engine.calculate(input, {});
+  assert.equal(result.modules.B6.value, 100);
+  assert.equal(result.modules.B6.status, 'complete');
+  assert.equal(result.modules.B6.wholeLifeCompatible, true);
+});
+
+test('operational fuel is included only with compatible sourced CO2e electricity and fuel factors', () => {
+  const sourcedEnergy = {
+    annualKwh: 100, gridFactorId: 'custom', quality: 'Measured', consumptionSource: source,
+    annualFuel: 10, fuelSource: source, fuelUnit: 'MJ', fuelFactor: 2,
+    fuelFactorUnit: 'kgCO2e/MJ', fuelMetric: 'CO2e', fuelFactorSource: source,
+    customFactor: 0.5, customUnit: 'kgCO2e/kWh', customRegion: 'Test region', customBoundary: 'B6',
+    customSourceName: 'Synthetic test fixture', customSource: source, customYear: 2025,
+    customTemporal: 'Current / historical', customLosses: 'unknown'
+  };
+  const compatible = engine.calculate(fullInput({ energy: sourcedEnergy }), {});
+  assert.equal(compatible.modules.B6.value, 140);
+  assert.equal(compatible.modules.B6.status, 'complete');
+
+  const co2Only = engine.calculate(fullInput({ energy: {
+    annualKwh: 100, gridFactorId: '', quality: 'Measured', consumptionSource: source,
+    annualFuel: 10, fuelSource: source, fuelUnit: 'MJ', fuelFactor: 2,
+    fuelFactorUnit: 'kgCO2e/MJ', fuelMetric: 'CO2e', fuelFactorSource: source,
+    illustrativeGridFactor: 0.727, illustrativeGridFactorUnit: 'kgCO2/kWh',
+    illustrativeGridFactorLabel: 'Illustrative test location assumption', illustrativeGridFactorGeography: 'Test region'
+  } }), {});
+  assert.equal(co2Only.modules.B6.value, 145.4);
+  assert.match(co2Only.modules.B6.warnings.join(' '), /cannot be combined/i);
+  assert.equal(co2Only.wholeLife, null);
+});
+
 test('concrete mix requires unit and provenance metadata before scoring', () => {
   const metadata = { mass: 10, massUnit: 'kg/m3', factor: 2, factorUnit: 'kgCO2e/kg', module: 'A1–A3', source, geography: 'Test', referenceYear: 2024, dataQuality: 'synthetic' };
   const result = engine.calculateConcreteMix({ constituents: [{ ...metadata, sourceName: 'Synthetic source', name: 'test' }] }, 2);
