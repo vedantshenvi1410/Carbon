@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef2f3" />
     <meta name="description" content="Estimate and compare building lifecycle carbon." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%234b705b' d='M5 25 16 4l11 21H5Zm5 0h12l-6-11-6 11Z'/%3E%3C/svg%3E" />
     <title>Carbonwise — Building carbon, made tangible</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -53,9 +54,9 @@
 
           <section class="metrics-grid" aria-label="Carbon summary">
             <article class="metric-card metric-total">
-              <div class="metric-heading"><span>Lifecycle carbon</span><span class="metric-icon">↗</span></div>
+              <div class="metric-heading"><span id="lifecycle-heading">Partial carbon subtotal</span><span class="metric-icon">↗</span></div>
               <div class="metric-value"><strong id="lifecycle-total">—</strong><span>tCO₂e</span></div>
-              <div class="metric-footer"><span id="intensity-value">— kgCO₂e / m²</span><span class="metric-tag" id="lifecycle-status">INCOMPLETE SCOPE</span></div>
+              <div class="metric-footer"><span id="intensity-value">Whole-life intensity unavailable</span><span class="metric-tag" id="lifecycle-status">INCOMPLETE SCOPE</span></div>
               <div class="metric-uncertainty" id="metric-uncertainty">Indicative range —</div>
               <div class="total-line" aria-hidden="true"><i id="total-line-embodied"></i><i id="total-line-operational"></i></div>
               <div class="line-legend"><span><i class="dot dot-embodied"></i>Product stage · A1–A3</span><span><i class="dot dot-operational"></i>Operational · B6</span></div>
@@ -151,7 +152,7 @@
           <section class="opportunities-section" id="opportunities">
             <div class="opportunities-heading"><div><span class="section-kicker">DESIGN EXPLORER</span><h2>Explore lower-carbon alternatives.</h2><p>Intervention effects are illustrative prototype assumptions; mix candidates remain unscored until sourced.</p></div><div class="opportunity-total"><strong id="opportunity-count">0</strong><span>OPTIONS<br />SCORED</span></div></div>
             <div class="opportunity-grid" id="opportunity-grid"></div>
-            <div class="optimised-bar"><div class="optimised-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></div><div class="optimised-text"><strong>Selected design</strong><span>Select shading, solar or lower-carbon concrete options to compare the prototype scenarios.</span></div><div class="optimised-result"><small>SELECTED WHOLE-LIFE CARBON</small><strong><span id="optimised-total">—</span> <i>tCO₂e</i></strong><span class="reduction-chip" id="reduction-chip">—</span></div></div>
+            <div class="optimised-bar"><div class="optimised-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></div><div class="optimised-text"><strong>Selected design</strong><span>Select shading, solar or lower-carbon concrete options to compare the prototype scenarios.</span></div><div class="optimised-result"><small>SELECTED RESULT · PARTIAL IF INCOMPLETE</small><strong><span id="optimised-total">—</span> <i>tCO₂e</i></strong><span class="reduction-chip" id="reduction-chip">—</span></div></div>
             <div class="scenario-notice" id="scenario-notice" role="status" hidden></div>
           </section>
 

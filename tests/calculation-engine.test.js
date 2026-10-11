@@ -28,6 +28,25 @@ test('material arithmetic and complete whole-life fixture reconcile', () => {
   assert.equal(result.carbonIntensity, 120 / 100);
 });
 
+test('partial subtotal reports only complete compatible modules and preserves whole-life incompleteness', () => {
+  const input = fullInput();
+  input.modules.B2 = { amount: null, source: '' };
+  const result = engine.calculate(input, data);
+  assert.equal(result.wholeLife, null);
+  assert.equal(result.reportedSubtotal.value, 120);
+  assert.equal(result.reportedSubtotal.status, 'partial');
+  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3', 'B6']);
+  assert.ok(result.reportedSubtotal.missingModules.includes('B2'));
+});
+
+test('CO2-only operational result is not added to the CO2e product-stage subtotal', () => {
+  const co2Data = { electricityFactors: { grid: { ...factor, metricUnit: 'kgCO2/kWh', unit: 'kgCO2/kWh' } } };
+  const result = engine.calculate(fullInput(), co2Data);
+  assert.equal(result.reportedSubtotal.value, 20);
+  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3']);
+  assert.equal(result.wholeLife, null);
+});
+
 test('absent electricity factor registry does not throw or become zero', () => {
   const result = engine.calculate(fullInput(), {});
   assert.equal(result.modules.B6.value, null);

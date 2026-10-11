@@ -234,6 +234,34 @@
     }
 
     const wholeLife = selectedSeries?.wholeLife ?? null;
+    // A partial reported subtotal is useful for the UI, but it is never the
+    // whole-life result. Include only complete, compatible modules and expose
+    // exactly what was included so consumers cannot mistake it for A–C.
+    const partialIncludedModules = [];
+    let partialTotal = 0;
+    if (modules['A1–A3'].complete && modules['A1–A3'].value != null) {
+      partialTotal += modules['A1–A3'].value;
+      partialIncludedModules.push('A1–A3');
+    }
+    if (modules.B6.complete && modules.B6.wholeLifeCompatible && modules.B6.value != null) {
+      partialTotal += modules.B6.value;
+      partialIncludedModules.push('B6');
+    }
+    const reportedSubtotal = wholeLifeComplete ? {
+      value: wholeLife,
+      unit: 'kgCO2e',
+      status: 'complete',
+      includedModules: REQUIRED_MODULES.slice(),
+      missingModules: [],
+      label: 'Whole-life A–C total'
+    } : partialIncludedModules.length ? {
+      value: partialTotal,
+      unit: 'kgCO2e',
+      status: 'partial',
+      includedModules: partialIncludedModules,
+      missingModules: REQUIRED_MODULES.filter(code => !modules[code].complete),
+      label: `Partial subtotal · ${partialIncludedModules.join(' + ')}`
+    } : { value: null, unit: 'kgCO2e', status: 'incomplete', includedModules: [], missingModules: REQUIRED_MODULES.slice(), label: 'No compatible subtotal available' };
     const d = sourcedAmount(moduleRecords.D);
     modules.D = { value: d.value, formula: 'User-supplied Module D total (kgCO₂e); reported separately', source: d.source, complete: d.value != null };
 
@@ -277,6 +305,7 @@
       embodied,
       operational,
       wholeLife,
+      reportedSubtotal,
       moduleD: d.value,
       baseline,
       scenarios,
