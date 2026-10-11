@@ -20,7 +20,8 @@
 .audit-material-table .factor-column{width:42%}
 .audit-material-table .carbon-column{width:13%}
 .audit-material-table th,.audit-material-table td{overflow-wrap:anywhere}
-.audit-material-table td input,.audit-material-table td select{width:100%;min-width:0}
+.audit-material-table td input,.audit-material-table td select{display:block;width:100%;max-width:100%;min-width:0;min-height:34px}
+.audit-material-table td{white-space:normal}
 .audit-material-table .material-name{overflow-wrap:anywhere}
 .audit-material-table .carbon-cell{font-variant-numeric:tabular-nums;white-space:normal}
 @media(max-width:900px){.content-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"building" "overview" "materials"}.right-column{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}}
