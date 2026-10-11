@@ -1,1 +1,16 @@
 project_id = "carbonwise"
+
+[auth]
+site_url = "https://carbon-seven-gamma.vercel.app"
+additional_redirect_urls = ["https://carbon-seven-gamma.vercel.app/**"]
+
+[auth.email]
+enable_confirmations = true
+
+[auth.email.template.confirmation]
+subject = "Confirm your Carbonwise account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Carbonwise password"
+content_path = "./supabase/templates/recovery.html"

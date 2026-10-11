@@ -1,5 +1,6 @@
 const client = window.CARBONWISE_SUPABASE;
 const $ = (id) => document.getElementById(id);
+const authReturnUrl = `${String(window.CARBONWISE_SITE_URL || window.location.origin).replace(/\/+$/, '')}/`;
 
 (() => {
   const state = { user: null, workspace: null, projects: [], current: null, saveTimer: null, writeChain: Promise.resolve() };
@@ -155,7 +156,7 @@ const $ = (id) => document.getElementById(id);
       runForm(authForm, 'auth-message', async () => {
         const email = $('auth-email').value.trim(); const password = $('auth-password').value;
         const result = mode === 'signup'
-          ? await client.auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}${location.pathname}` } })
+          ? await client.auth.signUp({ email, password, options: { emailRedirectTo: authReturnUrl } })
           : await client.auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
         if (mode === 'signup' && !result.data.session) { message('auth-message', 'Check your email for the confirmation link. You can sign in after confirming.'); return; }
@@ -167,7 +168,7 @@ const $ = (id) => document.getElementById(id);
       if (!email) { message('auth-message', 'Enter your email address first.'); $('auth-email').focus(); return; }
       $('auth-forgot').disabled = true;
       try {
-        const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}${location.pathname}` });
+        const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: authReturnUrl });
         if (error) throw error;
         message('auth-message', 'If an account exists for that address, a reset link has been sent.');
       } catch (error) { fail(error, 'auth-message'); } finally { $('auth-forgot').disabled = false; }

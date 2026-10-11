@@ -6,7 +6,7 @@ Carbonwise is a browser-based building carbon estimator with private Supabase ac
 
 Requires Node.js 20.19+ or 22.12+ and npm.
 
-1. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from the Supabase project’s API settings. Only the publishable key belongs in a browser build. Never use `SUPABASE_SECRET_KEY`, a service-role key, or a database password in any `VITE_` variable.
+1. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_SITE_URL` from your project and deployed app. The example points at `https://carbon-seven-gamma.vercel.app`. Only the publishable key belongs in a browser build. Never use `SUPABASE_SECRET_KEY`, a service-role key, or a database password in any `VITE_` variable.
 2. Install dependencies with `npm install`.
 3. Run `npm run dev` and open the local URL printed by Vite.
 
@@ -26,6 +26,12 @@ supabase db push
 ```
 
 The final command applies the migration to the remote database and requires the database password or authenticated CLI access. Review the dry-run output first. The migration is not applied until `db push` completes successfully.
+
+## Hosted Auth redirect and email templates
+
+The app sends signup confirmation and password reset requests to `VITE_SITE_URL`, defaulting to `https://carbon-seven-gamma.vercel.app`. The Supabase dashboard must also have that URL configured as the Site URL and `https://carbon-seven-gamma.vercel.app/**` in the Auth redirect URL allowlist. Otherwise, Supabase can fall back to its Site URL or reject the requested redirect.
+
+The branded confirmation and reset email HTML is in `supabase/templates/`. The matching subjects and paths are in `supabase/config.toml` for local Supabase development. For the hosted project, copy those two HTML files into **Authentication → Email Templates** in the Supabase dashboard, setting the confirmation subject to “Confirm your Carbonwise account” and the recovery subject to “Reset your Carbonwise password”. Keep `{{ .ConfirmationURL }}` intact in both templates; it carries Supabase’s one-time action and the app redirect. Supabase’s hosted dashboard manages templates separately from local CLI templates.
 
 ## Supabase Auth production settings
 
