@@ -6,3 +6,23 @@
 .opportunity-card>small{color:#899492;font-size:9px;line-height:1.45}
 .opportunity-card>b{font:500 9px var(--mono);line-height:1.4;color:#718078}
 .option-icon{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:6px;background:#eaf3ef;color:#276554}
+/* Carbonwise estimator: use the full workspace width and give source fields room. */
+.page-wrap{max-width:1800px}
+.content-grid{grid-template-columns:minmax(0,1.55fr) minmax(300px,.85fr);grid-template-areas:"building overview" "materials materials";align-items:start}
+.left-column{display:contents}
+.building-panel{grid-area:building;min-width:0}
+.right-column{grid-area:overview;min-width:0}
+.materials-panel{grid-area:materials;min-width:0}
+.material-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.audit-material-table{width:100%;min-width:1200px;table-layout:fixed}
+.audit-material-table .material-column{width:19%}
+.audit-material-table .quantity-column{width:26%}
+.audit-material-table .factor-column{width:42%}
+.audit-material-table .carbon-column{width:13%}
+.audit-material-table th,.audit-material-table td{overflow-wrap:anywhere}
+.audit-material-table td input,.audit-material-table td select{width:100%;min-width:0}
+.audit-material-table .material-name{overflow-wrap:anywhere}
+.audit-material-table .carbon-cell{font-variant-numeric:tabular-nums;white-space:normal}
+@media(max-width:900px){.content-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"building" "overview" "materials"}.right-column{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}}
+@media(max-width:620px){.content-grid{grid-template-areas:"building" "overview" "materials"}.right-column{grid-template-columns:1fr}}
+@media print{.page-wrap{max-width:none}.content-grid{grid-template-columns:1.6fr 1fr;grid-template-areas:"building overview" "materials materials"}.left-column{display:contents}.audit-material-table{min-width:0}}

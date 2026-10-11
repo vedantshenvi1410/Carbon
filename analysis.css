@@ -41,6 +41,7 @@
 .audit-validation li.validation-fail{background:#fff0ec}
 .audit-validation li.validation-fail strong{color:#a13f2d}
 .audit-validation li.validation-pending{background:#f3f5f3}
+.validation-list li.validation-pending strong{color:#80683e}
 .calculation-actions{display:flex;align-items:center;gap:12px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e9e6)}.calculation-actions #calculation-state{font-size:11px;line-height:1.5;color:#718078}
 .module-summary{margin-top:20px;padding:18px;border-top:1px solid var(--line,#e5e9e6)}
 .module-summary h3{margin:0 0 12px}
@@ -62,6 +63,6 @@
 @media(max-width:820px){.audit-input-grid,.module-direct-grid,.module-summary-grid{grid-template-columns:1fr}.replacement-row{grid-template-columns:repeat(2,minmax(0,1fr))}.replacement-row .field-wide{grid-column:span 2}.validation-list li,.audit-validation li{grid-template-columns:1fr;gap:4px}}
 @media print{.audit-validation,.audit-modules,.transport-fields,.replacement-panel{break-inside:avoid}.module-summary-row{break-inside:avoid}.audit-material-table{min-width:0}.audit-material-table td input,.audit-material-table td select{border:0;background:none;padding:0}.audit-validation li{break-inside:avoid}}
 
-/* Keep MVP focused on the original hackathon workflow. */
-.audit-modules,.audit-validation,.energy-inputs>.field:not(:first-child){display:none!important}.audit-material-table{min-width:580px}.opportunity-card{cursor:pointer}.opportunity-card input[type=checkbox]{position:absolute;opacity:0}.opportunity-card:has(input:checked){outline:2px solid #789887;background:#f0f6f2}.material-alternatives .alternative-detail{margin-top:12px}
+/* Keep the source and lifecycle inputs available; missing evidence blocks totals. */
+.audit-modules,.audit-validation,.energy-inputs>.field:not(:first-child){display:block!important}.audit-material-table{min-width:1200px}.opportunity-card{cursor:pointer}.opportunity-card input[type=checkbox]{position:absolute;opacity:0}.opportunity-card:has(input:checked){outline:2px solid #789887;background:#f0f6f2}.material-alternatives .alternative-detail{margin-top:12px}
 

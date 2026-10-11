@@ -66,7 +66,7 @@
     if (!$('floors').value) $('floors').value=2;
     if (!$('lifetime').value) $('lifetime').value=50;
     if (!$('structure').value) $('structure').value='rcc';
-    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 · illustrative catalog default</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity" /><input type="url" data-quantity-source="${m.id}" aria-label="${m.name} quantity source URL" placeholder="Quantity source URL" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} factor" value="${m.ef}" /><small>kgCO₂e/kg · ${m.verificationStatus}</small><input type="text" data-factor-name="${m.id}" aria-label="${m.name} factor source name" placeholder="Factor source / EPD" /><input type="url" data-factor-source="${m.id}" aria-label="${m.name} factor source URL" placeholder="Factor source URL" /><input type="text" data-factor-region="${m.id}" aria-label="${m.name} factor geography" placeholder="Geography" /><input type="number" min="1900" max="2100" step="1" data-factor-year="${m.id}" aria-label="${m.name} factor publication year" placeholder="Year" /><select data-factor-status="${m.id}" aria-label="${m.name} factor verification status"><option value="unverified">Unverified</option><option value="user-verified">I verified this source</option></select></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
+    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 · illustrative catalog default</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity in kilograms" placeholder="Total kg" /><input type="text" data-quantity-evidence="${m.id}" aria-label="${m.name} quantity basis" placeholder="Quantity basis / estimate note" /><input type="url" data-quantity-source="${m.id}" aria-label="${m.name} quantity source URL" placeholder="Quantity source URL (required)" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} factor" value="${m.ef}" /><small>kgCO₂e/kg · ${m.verificationStatus}</small><input type="text" data-factor-name="${m.id}" aria-label="${m.name} factor source name" placeholder="Factor source / EPD" /><input type="url" data-factor-source="${m.id}" aria-label="${m.name} factor source URL" placeholder="Factor source URL" /><input type="text" data-factor-region="${m.id}" aria-label="${m.name} factor geography" placeholder="Geography" /><input type="number" min="1900" max="2100" step="1" data-factor-year="${m.id}" aria-label="${m.name} factor publication year" placeholder="Year" /><select data-factor-status="${m.id}" aria-label="${m.name} factor verification status"><option value="unverified">Unverified</option><option value="user-verified">I verified this source</option></select></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
     $('module-inputs').innerHTML=['B1','B2','B3','B5','C1','C2','C3','C4','D'].map(code=>`<div class="transport-fields"><strong>${code} · ${code==='D'?'Benefits beyond the system boundary':'Lifecycle module'}</strong><div class="audit-input-grid"><label class="field">Module total <span class="unit">kgCO₂e</span><input id="module-${code}-amount" type="number" min="0" step="any" /></label><label class="field">Source or documented zero basis<input id="module-${code}-source" type="text" placeholder="Source URL or explain zero / not applicable" /></label></div></div>`).join('')+`<div class="transport-fields"><strong>B7 · Operational water</strong><div class="audit-input-grid"><label class="field">Total water use over study period <span class="unit">m³</span><input id="b7-volume" type="number" min="0" step="any" /></label><label class="field">Water source URL<input id="b7-volume-source" type="url" placeholder="Metered or modelled water record" /></label><label class="field">B7 factor <span class="unit">kgCO₂e/m³</span><input id="b7-factor" type="number" min="0" step="any" /></label><label class="field">Factor source URL<input id="b7-factor-source" type="url" /></label></div></div>`;
     $('add-replacement').addEventListener('click',addReplacementRow);
     $('saved-status-text').textContent='Prototype demo loaded';$('side-project').nextElementSibling.textContent='Prototype demo · India';
@@ -124,8 +124,30 @@
     const area=projectGrossFloorArea();
     updateEstimatorArea();
     if(area==null){$('estimator-status').textContent='Enter a valid floor plate area and number of floors in Building snapshot before applying estimates.';return;}
-    materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); if(options.onlyBlank&&qtyField?.value.trim()!=='')return; const raw=intensity?.value; const quantity=raw===''||raw==null?0:Number(raw)*area; if(qtyField)qtyField.value=Number.isFinite(quantity)?String(quantity):'';});
-    $('estimator-status').textContent=options.onlyBlank?'Filled empty quantity rows from the area estimates. Review or edit totals before calculating carbon.':'Applied area estimates to the quantity table below. Review or edit totals before calculating carbon.'; markInputsChanged();
+    let applied=0,blank=0;
+    const unusuallyHigh=[];
+    materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); if(options.onlyBlank&&qtyField?.value.trim()!=='')return; const raw=intensity?.value; if(raw===''||raw==null){blank++;return;} const value=Number(raw);const quantity=value*area; if(value>2000)unusuallyHigh.push(m.name);if(qtyField&&Number.isFinite(quantity)){qtyField.value=String(quantity);applied++;}});
+    const warning=unusuallyHigh.length?` Check ${unusuallyHigh.join(', ')}: values above 2,000 kg/m² are unusually high; confirm you entered intensity, not project total.`:'';
+    $('estimator-status').textContent=`Applied ${applied} area estimate${applied===1?'':'s'}; ${blank} intensity field${blank===1?'':'s'} left blank. Blank estimates stay blank and are not treated as zero.${warning}`; markInputsChanged();
+  }
+
+  function renderValidation(checks=[]){
+    const list=$('validation-list');
+    if(!list)return;
+    list.replaceChildren();
+    const pending=checks.filter(check=>check.pass!==true);
+    const visible=pending.length?pending:checks;
+    visible.forEach(check=>{
+      const row=document.createElement('li');
+      row.className=check.pass===true?'validation-pass':check.pass===false?'validation-fail':'validation-pending';
+      const title=document.createElement('strong');
+      title.textContent=check.name||'Calculation check';
+      const detail=document.createElement('span');
+      detail.textContent=check.detail||'';
+      row.append(title,detail);
+      list.appendChild(row);
+    });
+    $('audit-state').textContent=pending.length?`${pending.length} CHECK${pending.length===1?'':'S'} NEED ATTENTION`:'READY';
   }
 
   function addReplacementRow(){
@@ -171,6 +193,7 @@
         id: m.id,
         name: m.name,
         quantity: document.querySelector(`[data-q="${m.id}"]`)?.value,
+        quantityEvidence: document.querySelector(`[data-quantity-evidence="${m.id}"]`)?.value,
         factor: document.querySelector(`[data-ef="${m.id}"]`)?.value,
         quantitySource: document.querySelector(`[data-quantity-source="${m.id}"]`)?.value,
         factorName: document.querySelector(`[data-factor-name="${m.id}"]`)?.value,
@@ -195,7 +218,7 @@
           quantity: m.quantity,
           quantityUnit: matData.unit || '',
           quantitySource: m.quantitySource,
-          quantityEvidence: m.quantitySource ? 'User-provided quantity source; review the cited record and unit.' : '',
+          quantityEvidence: m.quantityEvidence || (m.quantitySource ? 'User-provided quantity source; review the cited record and unit.' : ''),
           factor: m.factor,
           factorUnit: matData.factorUnit || '',
           factorYear: m.factorYear,
@@ -274,6 +297,7 @@
       if (!detailedResults || !detailedResults.modules || !detailedResults.modules['A1–A3'] || !detailedResults.modules.B6 || !detailedResults.reportedSubtotal) {
         throw new Error('The calculation engine returned an incomplete result structure.');
       }
+      renderValidation(detailedResults.checks || []);
     } catch (error) {
       console.error('Carbonwise calculation failed:', error);
       $('calculation-state').textContent=`Calculation failed: ${error instanceof Error ? error.message : 'unexpected calculation error'}. Check the inputs and try again.`;
@@ -315,7 +339,7 @@
     document.querySelectorAll('.app-shell input[id],.app-shell select[id],.app-shell textarea[id]').forEach(el=>{if(el.matches('input[type="checkbox"]'))fields[el.id]=el.checked;else fields[el.id]=el.value;});
     const intensities=Object.fromEntries([...document.querySelectorAll('[data-intensity]')].map(el=>[el.dataset.intensity,el.value]));
     const costs=Object.fromEntries([...document.querySelectorAll('[data-cost]')].map(el=>[el.dataset.cost,el.value]));
-    const materialRows=materials.map(m=>({id:m.id,quantity:$(`[data-q="${m.id}"]`)?.value??'',quantitySource:$(`[data-quantity-source="${m.id}"]`)?.value??'',factor:$(`[data-ef="${m.id}"]`)?.value??'',factorName:$(`[data-factor-name="${m.id}"]`)?.value??'',factorSource:$(`[data-factor-source="${m.id}"]`)?.value??'',factorRegion:$(`[data-factor-region="${m.id}"]`)?.value??'',factorYear:$(`[data-factor-year="${m.id}"]`)?.value??'',factorStatus:$(`[data-factor-status="${m.id}"]`)?.value??'unverified'}));
+    const materialRows=materials.map(m=>({id:m.id,quantity:$(`[data-q="${m.id}"]`)?.value??'',quantityEvidence:$(`[data-quantity-evidence="${m.id}"]`)?.value??'',quantitySource:$(`[data-quantity-source="${m.id}"]`)?.value??'',factor:$(`[data-ef="${m.id}"]`)?.value??'',factorName:$(`[data-factor-name="${m.id}"]`)?.value??'',factorSource:$(`[data-factor-source="${m.id}"]`)?.value??'',factorRegion:$(`[data-factor-region="${m.id}"]`)?.value??'',factorYear:$(`[data-factor-year="${m.id}"]`)?.value??'',factorStatus:$(`[data-factor-status="${m.id}"]`)?.value??'unverified'}));
     const replacements=[...document.querySelectorAll('[data-replacement-row]')].map(row=>Object.fromEntries(['name','quantity','life','year','factor','factor-year','source-name','factor-source','life-source','region','quantity-source'].map(key=>[key,row.querySelector(`[data-r-${key}]`)?.value??''])));
     return {version:1,fields,intensities,costs,materials:materialRows,replacements,selectedOptions:[...document.querySelectorAll('[data-option]:checked')].map(el=>el.dataset.option)};
   }
@@ -325,7 +349,7 @@
       for(const [id,value] of Object.entries(state.fields||{})){const el=$(id);if(!el)continue;if(el.matches('input[type="checkbox"]'))el.checked=Boolean(value);else if(el.matches('input,select,textarea'))el.value=value??'';}
       for(const [id,value] of Object.entries(state.intensities||{})){const el=document.querySelector(`[data-intensity="${id}"]`);if(el)el.value=value??'';}
       for(const [id,value] of Object.entries(state.costs||{})){const el=document.querySelector(`[data-cost="${id}"]`);if(el)el.value=value??'';}
-      for(const item of state.materials||[]){const set=(selector,value)=>{const el=document.querySelector(selector);if(el)el.value=value??'';};set(`[data-q="${item.id}"]`,item.quantity);set(`[data-quantity-source="${item.id}"]`,item.quantitySource);set(`[data-ef="${item.id}"]`,item.factor);set(`[data-factor-name="${item.id}"]`,item.factorName);set(`[data-factor-source="${item.id}"]`,item.factorSource);set(`[data-factor-region="${item.id}"]`,item.factorRegion);set(`[data-factor-year="${item.id}"]`,item.factorYear);set(`[data-factor-status="${item.id}"]`,item.factorStatus||'unverified');}
+      for(const item of state.materials||[]){const set=(selector,value)=>{const el=document.querySelector(selector);if(el)el.value=value??'';};set(`[data-q="${item.id}"]`,item.quantity);set(`[data-quantity-evidence="${item.id}"]`,item.quantityEvidence);set(`[data-quantity-source="${item.id}"]`,item.quantitySource);set(`[data-ef="${item.id}"]`,item.factor);set(`[data-factor-name="${item.id}"]`,item.factorName);set(`[data-factor-source="${item.id}"]`,item.factorSource);set(`[data-factor-region="${item.id}"]`,item.factorRegion);set(`[data-factor-year="${item.id}"]`,item.factorYear);set(`[data-factor-status="${item.id}"]`,item.factorStatus||'unverified');}
       $('replacement-inputs').replaceChildren();
       for(const item of state.replacements||[]){addReplacementRow();const row=$('replacement-inputs').lastElementChild;for(const [key,value] of Object.entries(item)){const el=row.querySelector(`[data-r-${key}]`);if(el)el.value=value??'';}}
       document.querySelectorAll('[data-option]').forEach(el=>{el.checked=(state.selectedOptions||[]).includes(el.dataset.option);});
