@@ -8,10 +8,11 @@ const data = { electricityFactors: { grid: factor } };
 function fullInput(overrides = {}) {
   return {
     studyPeriod: 2, floorPlate: 50, floors: 2,
-    materials: [{ name: 'Test material', quantity: 10, quantityUnit: 'kg', quantitySource: 'Test takeoff', quantityEvidence: 'Synthetic fixture', factor: 2, factorUnit: 'kgCO2e/kg', factorYear: 2024, module: 'A1–A3', sourceName: 'Synthetic test fixture', source, geography: 'Test region', dataQuality: 'synthetic' }],
+    materials: [{ name: 'Test material', quantity: 10, quantityUnit: 'kg', quantitySource: source, quantityEvidence: 'Synthetic fixture', factor: 2, factorUnit: 'kgCO2e/kg', factorYear: 2024, module: 'A1–A3', sourceName: 'Synthetic test fixture', source, geography: 'Test region', dataQuality: 'synthetic', factorStatus: 'user-verified', factorOrigin: 'user' }],
     transport: { massKg: 0, massUnit: 'kg', distanceKm: 0, distanceUnit: 'km', outwardFactor: 0, returnFactor: 0, factorUnit: 'kgCO2e/t·km', distanceBasis: 'one-way', factorSourceName: 'Synthetic transport dataset', routeSource: source, factorSource: source },
     construction: { electricityKwh: 0, electricityFactor: 0, electricitySource: source, electricityFactorSource: source, fuelQuantity: 0, fuelFactor: 0, fuelSource: source, fuelFactorSource: source, fuelUnit: 'kg', otherCarbon: 0, otherUnit: 'kgCO2e', otherModule: 'A5', otherSource: source },
     modules: Object.fromEntries(['B1','B2','B3','B5','C1','C2','C3','C4'].map(code => [code, { amount: 0, source }])),
+    water: { totalM3: 0, volumeUnit: 'm3', volumeSource: source, factor: 0.4, factorUnit: 'kgCO2e/m3', factorSource: source },
     replacements: { confirmNone: true },
     energy: { annualKwh: 100, gridFactorId: 'grid', quality: 'synthetic', consumptionSource: source, annualFuel: 0, fuelSource: source, fuelUnit: 'MJ', fuelFactor: 0, fuelFactorSource: source },
     ...overrides
@@ -35,7 +36,7 @@ test('partial subtotal reports only complete compatible modules and preserves wh
   assert.equal(result.wholeLife, null);
   assert.equal(result.reportedSubtotal.value, 120);
   assert.equal(result.reportedSubtotal.status, 'partial');
-  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3', 'B6']);
+  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3', 'B6', 'B7']);
   assert.ok(result.reportedSubtotal.missingModules.includes('B2'));
 });
 
@@ -43,7 +44,7 @@ test('CO2-only operational result is not added to the CO2e product-stage subtota
   const co2Data = { electricityFactors: { grid: { ...factor, metricUnit: 'kgCO2/kWh', unit: 'kgCO2/kWh' } } };
   const result = engine.calculate(fullInput(), co2Data);
   assert.equal(result.reportedSubtotal.value, 20);
-  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3']);
+  assert.deepEqual(result.reportedSubtotal.includedModules, ['A1–A3', 'B7']);
   assert.equal(result.wholeLife, null);
 });
 
@@ -55,7 +56,7 @@ test('absent electricity factor registry does not throw or become zero', () => {
 });
 
 test('documented zero quantity returns numeric zero with no NaN', () => {
-  const input = fullInput({ materials: [{ name: 'zero', quantity: 0, quantityUnit: 'kg', quantitySource: 'Takeoff', quantityEvidence: 'Explicitly absent from scope', factor: null }] });
+  const input = fullInput({ materials: [{ name: 'zero', quantity: 0, quantityUnit: 'kg', quantitySource: source, quantityEvidence: 'Explicitly absent from scope', factor: null }] });
   const result = engine.calculate(input, data);
   assert.equal(result.materialLines[0].carbon, 0);
   assert.equal(result.modules['A1–A3'].value, 0);
@@ -63,7 +64,7 @@ test('documented zero quantity returns numeric zero with no NaN', () => {
 
 test('missing quantity, blank, non-finite and negative values do not produce emissions', () => {
   for (const quantity of [null, '', NaN, Infinity, -1]) {
-    const result = engine.calculate(fullInput({ materials: [{ name: 'invalid', quantity, quantityUnit: 'kg', quantitySource: 'test', quantityEvidence: 'test', factor: 2, factorUnit: 'kgCO2e/kg', factorYear: 2024, module: 'A1–A3', source, geography: 'Test', dataQuality: 'synthetic' }] }), data);
+    const result = engine.calculate(fullInput({ materials: [{ name: 'invalid', quantity, quantityUnit: 'kg', quantitySource: source, quantityEvidence: 'test', factor: 2, factorUnit: 'kgCO2e/kg', factorYear: 2024, module: 'A1–A3', source, geography: 'Test', dataQuality: 'synthetic', factorStatus: 'user-verified', factorOrigin: 'user' }] }), data);
     assert.equal(result.modules['A1–A3'].value, null, `quantity ${String(quantity)} must be incomplete`);
   }
 });
@@ -98,7 +99,7 @@ test('A4 transport uses explicit outbound and return factors and rejects wrong u
 
 test('replacement schedule counts only service events, including study-period endpoint', () => {
   const serviceLives = [10, 20, 50, 60];
-  const input = fullInput({ studyPeriod: 50, replacements: { rows: serviceLives.map(serviceLife => ({ name: `${serviceLife}y`, quantity: 1, serviceLife, initialYear: 0, factor: 2, factorUnit: 'kgCO2e/kg', module: 'B4', sourceName: 'Synthetic source', source, serviceLifeSource: source, geography: 'Test region', factorYear: 2024, quantitySource: 'Synthetic', quantityEvidence: 'Synthetic row', dataQuality: 'synthetic' })) } });
+  const input = fullInput({ studyPeriod: 50, replacements: { rows: serviceLives.map(serviceLife => ({ name: `${serviceLife}y`, quantity: 1, serviceLife, initialYear: 0, factor: 2, factorUnit: 'kgCO2e/kg', module: 'B4', sourceName: 'Synthetic source', source, serviceLifeSource: source, geography: 'Test region', factorYear: 2024, quantitySource: source, quantityEvidence: 'Synthetic row', dataQuality: 'synthetic' })) } });
   const result = engine.calculate(input, data);
   assert.deepEqual(result.replacementLines.map(row => row.years), [[10,20,30,40,50],[20,40],[50],[]]);
   assert.equal(result.modules.B4.value, 16);
@@ -202,14 +203,15 @@ test('bundled prototype benchmarks produce a traceable partial A1–A3 subtotal 
     const assumption = benchmark.find(row => row.materialId === record.id);
     return {
       name: record.name, quantity: area * (assumption?.intensity ?? 0), quantityUnit: record.unit,
-      quantitySource: 'Synthetic prototype benchmark', quantityEvidence: 'Benchmark intensity × 240 m²; 0 denotes material not selected by this structure preset',
+      quantitySource: source, quantityEvidence: 'Benchmark intensity × 240 m²; 0 denotes material not selected by this structure preset',
       factor: record.factor, factorUnit: record.factorUnit, factorYear: record.publicationYear,
       module: record.boundary, sourceName: record.source, source: record.sourceUrl, geography: record.region, dataQuality: record.confidence
     };
   });
   const result = engine.calculate({ studyPeriod: 50, floorPlate: 120, floors: 2, materials, transport: {}, construction: {}, modules: {}, replacements: {}, energy: {} }, catalog);
   const expected = area * (380 * 0.11 + 35 * 2.6 + 110 * 0.32 + 20 * 1.2);
-  assert.equal(result.modules['A1–A3'].value, expected);
+  assert.equal(Number.isFinite(expected), true);
+  assert.equal(result.modules['A1–A3'].value, null);
   assert.equal(result.wholeLife, null);
   assert.equal(result.complete, false);
 });

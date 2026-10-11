@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const REQUIRED_MODULES = ['A1–A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'C1', 'C2', 'C3', 'C4'];
+  const REQUIRED_MODULES = ['A1–A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'C1', 'C2', 'C3', 'C4'];
 
   const isNum = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   const hasText = value => typeof value === 'string' && value.trim().length > 0;
@@ -52,8 +52,8 @@
       const module = line.module || '';
       const factorYear = nullableNumber(line.factorYear);
 
-      const quantityEvidenceOk = hasText(line.quantitySource) && hasText(line.quantityEvidence);
-      const factorEvidenceOk = isNum(factor) && hasText(line.sourceName) && hasUrl(line.source) && hasText(line.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(line.dataQuality);
+      const quantityEvidenceOk = hasUrl(line.quantitySource) && hasText(line.quantityEvidence);
+      const factorEvidenceOk = isNum(factor) && line.factorStatus === 'user-verified' && line.factorOrigin === 'user' && hasText(line.sourceName) && hasUrl(line.source) && hasText(line.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(line.dataQuality);
       const unitOk = line.quantityUnit === 'kg' && factorUnit === 'kgCO2e/kg' && module === 'A1–A3';
 
       const complete = isNum(quantity) && quantityEvidenceOk && (quantity === 0 || (factorEvidenceOk && unitOk));
@@ -66,7 +66,7 @@
         name: line.name, quantity, quantityUnit: line.quantityUnit || 'kg',
         quantitySource: line.quantitySource || '', quantityEvidence: line.quantityEvidence || '',
         factor, factorUnit, factorYear, module, source: line.source || '',
-        sourceName: line.sourceName || '', geography: line.geography || '', dataQuality: line.dataQuality || '',
+        sourceName: line.sourceName || '', geography: line.geography || '', dataQuality: line.dataQuality || '', factorStatus: line.factorStatus || 'unverified', factorOrigin: line.factorOrigin || 'catalog',
         carbon, complete
       };
     });
@@ -118,6 +118,16 @@
       const record = sourcedAmount(moduleRecords[code]);
       modules[code] = { value: record.value, formula: 'User-supplied module total (kgCO₂e)', source: record.source, complete: record.value != null };
     }
+    const water = input.water || {};
+    const waterVolume = nullableNumber(water.totalM3);
+    const waterFactor = nullableNumber(water.factor);
+    const waterComplete = isNum(waterVolume) && isNum(waterFactor) && water.volumeUnit === 'm3' && water.factorUnit === 'kgCO2e/m3' && hasUrl(water.volumeSource) && hasUrl(water.factorSource);
+    modules.B7 = {
+      value: waterComplete ? waterVolume * waterFactor : null,
+      formula: 'total operational water use over study period (m³) × sourced B7 factor (kgCO₂e/m³)',
+      source: [water.volumeSource, water.factorSource].filter(Boolean).join('; '),
+      complete: waterComplete
+    };
 
     const replacements = input.replacements || {};
     const replacementRows = Array.isArray(replacements.rows) ? replacements.rows : [];
@@ -130,7 +140,7 @@
       const initialYear = nullableNumber(row.initialYear ?? 0);
       const factor = nullableNumber(row.factor);
       const factorYear = nullableNumber(row.factorYear);
-      const valid = isNum(quantity) && Number.isInteger(serviceLife) && serviceLife > 0 && Number.isInteger(initialYear) && isNum(initialYear) && initialYear <= period && Number.isInteger(period) && period > 0 && isNum(factor) && row.factorUnit === 'kgCO2e/kg' && row.module === 'B4' && hasText(row.sourceName) && hasUrl(row.source) && hasUrl(row.serviceLifeSource) && hasText(row.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(row.quantitySource) && hasText(row.quantityEvidence) && hasText(row.dataQuality);
+      const valid = isNum(quantity) && Number.isInteger(serviceLife) && serviceLife > 0 && Number.isInteger(initialYear) && isNum(initialYear) && initialYear <= period && Number.isInteger(period) && period > 0 && isNum(factor) && row.factorUnit === 'kgCO2e/kg' && row.module === 'B4' && hasText(row.sourceName) && hasUrl(row.source) && hasUrl(row.serviceLifeSource) && hasText(row.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasUrl(row.quantitySource) && hasText(row.quantityEvidence) && hasText(row.dataQuality);
 
       // Assessment interval includes its endpoint: an event at year == period is counted.
       // Initial installation at initialYear is excluded; only subsequent service-life events are included.
@@ -216,18 +226,18 @@
     if (!Number.isInteger(period) || period <= 0) errors.push('Study period must be a positive whole number of years.');
     if (area == null) errors.push('Gross floor area cannot be calculated from the current floor plate and floor count.');
 
-    const embodiedCodes = REQUIRED_MODULES.filter(code => code !== 'B6');
+    const embodiedCodes = REQUIRED_MODULES.filter(code => !['B6', 'B7'].includes(code));
     const embodiedComplete = embodiedCodes.every(code => modules[code].complete);
     const embodied = embodiedComplete ? embodiedCodes.reduce((sum, code) => sum + modules[code].value, 0) : null;
     const operational = modules.B6.value;
     const modulesAvailable = REQUIRED_MODULES.every(code => modules[code].complete);
-    const wholeLifeComplete = modulesAvailable && modules.B6.wholeLifeCompatible;
-    const baselineComplete = embodiedComplete && Boolean(scenarios.constant) && modules.B6.wholeLifeCompatible;
-    const constantBaselineWholeLife = baselineComplete ? embodied + scenarios.constant.total : null;
+    const wholeLifeComplete = modulesAvailable && area != null && modules.B6.wholeLifeCompatible;
+    const baselineComplete = embodiedComplete && modules.B7.complete && area != null && Boolean(scenarios.constant) && modules.B6.wholeLifeCompatible;
+    const constantBaselineWholeLife = baselineComplete ? embodied + modules.B7.value + scenarios.constant.total : null;
 
     for (const [, series] of Object.entries(scenarios)) {
       if (!series) continue;
-      series.wholeLife = embodiedComplete && modules.B6.wholeLifeCompatible ? embodied + series.total : null;
+      series.wholeLife = embodiedComplete && modules.B7.complete && area != null && modules.B6.wholeLifeCompatible ? embodied + modules.B7.value + series.total : null;
       series.reduction = constantBaselineWholeLife != null && series.wholeLife != null ? constantBaselineWholeLife - series.wholeLife : null;
       series.reductionPercent = series.reduction != null && constantBaselineWholeLife !== 0 ? series.reduction / constantBaselineWholeLife * 100 : null;
       series.relativeB6Percent = series.total != null && scenarios.constant?.total ? series.total / scenarios.constant.total * 100 : null;
@@ -246,6 +256,10 @@
     if (modules.B6.complete && modules.B6.wholeLifeCompatible && modules.B6.value != null) {
       partialTotal += modules.B6.value;
       partialIncludedModules.push('B6');
+    }
+    if (modules.B7.complete && modules.B7.value != null) {
+      partialTotal += modules.B7.value;
+      partialIncludedModules.push('B7');
     }
     const reportedSubtotal = wholeLifeComplete ? {
       value: wholeLife,
@@ -269,8 +283,8 @@
     const selected = { selectedScenario, embodied, operational: selectedSeries?.total ?? null, wholeLife, reduction: selectedSeries?.reduction ?? null, reductionPercent: selectedSeries?.reductionPercent ?? null, complete: wholeLife != null };
     const delta = selected.reduction;
     const reductionPercent = selected.reductionPercent;
-    const shares = wholeLife != null && wholeLife !== 0 ? { embodiedPercent: embodied / wholeLife * 100, operationalPercent: selected.operational / wholeLife * 100 } : null;
-    const baselineShares = baseline.wholeLife != null && baseline.wholeLife !== 0 ? { embodiedPercent: embodied / baseline.wholeLife * 100, operationalPercent: baseline.operational / baseline.wholeLife * 100 } : null;
+    const shares = wholeLife != null && wholeLife !== 0 ? { embodiedPercent: embodied / wholeLife * 100, operationalPercent: (selected.operational + modules.B7.value) / wholeLife * 100, waterPercent: modules.B7.value / wholeLife * 100 } : null;
+    const baselineShares = baseline.wholeLife != null && baseline.wholeLife !== 0 ? { embodiedPercent: embodied / baseline.wholeLife * 100, operationalPercent: (baseline.operational + modules.B7.value) / baseline.wholeLife * 100, waterPercent: modules.B7.value / baseline.wholeLife * 100 } : null;
     const carbonIntensity = wholeLife != null && area != null && area > 0 ? wholeLife / area : null;
     const baselineCarbonIntensity = baseline.wholeLife != null && area != null && area > 0 ? baseline.wholeLife / area : null;
     const materialShares = modules['A1–A3'].value != null && modules['A1–A3'].value !== 0 ? Object.fromEntries(materialLines.map(line => [line.name, line.carbon == null ? null : line.carbon / modules['A1–A3'].value * 100])) : null;
@@ -280,16 +294,16 @@
 
     checks.push({ name: 'Study period', pass: Number.isInteger(period) && period > 0, detail: `${period == null ? 'Missing' : Number.isInteger(period) ? period : 'Invalid'} years; all lifetime calculations use the study period field.` });
     checks.push({ name: 'Floor area', pass: area != null, detail: area == null ? 'Area incomplete.' : `${floorPlate} m² × ${floors} floors = ${area} m² GFA.` });
-    checks.push({ name: 'Material quantities', pass: materialLines.every(x => isNum(x.quantity) && hasText(x.quantitySource) && hasText(x.quantityEvidence)), detail: `${materialLines.filter(x => isNum(x.quantity) && hasText(x.quantitySource) && hasText(x.quantityEvidence)).length}/${materialLines.length} quantities include a provenance tag and supporting record/calculation.` });
+    checks.push({ name: 'Material quantities', pass: materialLines.every(x => isNum(x.quantity) && hasUrl(x.quantitySource) && hasText(x.quantityEvidence)), detail: `${materialLines.filter(x => isNum(x.quantity) && hasUrl(x.quantitySource) && hasText(x.quantityEvidence)).length}/${materialLines.length} quantities include a source URL and supporting note.` });
     checks.push({ name: 'Unit consistency', pass: materialLines.every(x => x.factor == null || (x.quantityUnit === 'kg' && x.factorUnit === 'kgCO2e/kg' && x.module === 'A1–A3')), detail: 'Material quantities use kg; product factors use kgCO₂e/kg and must cover A1–A3.' });
-    checks.push({ name: 'Emission-factor source availability', pass: materialLines.filter(x => x.factor != null).every(x => hasUrl(x.source) && hasText(x.geography) && Number.isInteger(x.factorYear) && x.factorYear >= 1900 && hasText(x.dataQuality)), detail: 'Entered material factors require a source URL, publication year, geography and data-quality class; A4/A5 and B6 source records are checked separately.' });
+    checks.push({ name: 'Emission-factor source availability', pass: materialLines.filter(x => x.factor != null && x.quantity !== 0).every(x => x.factorStatus === 'user-verified' && x.factorOrigin === 'user' && hasUrl(x.source) && hasText(x.sourceName) && hasText(x.geography) && Number.isInteger(x.factorYear) && x.factorYear >= 1900), detail: 'Nonzero material factors require a user-provided source, geography, publication year, and explicit verification status. Catalog factors remain unverified.' });
     checks.push({ name: 'A1–A3 / A4 / A5 boundary', pass: modules['A1–A3'].complete ? modules['A1–A3'].value != null && modules.A4.formula.startsWith('(mass') && modules.A5.formula.startsWith('site electricity') : null, detail: 'A1–A3, A4 and A5 are calculated and reported as separate modules. No A1–A3-only result is labeled A1–A5.' });
-    checks.push({ name: 'Embodied arithmetic', pass: embodiedComplete ? Number.isFinite(embodied) : null, detail: embodiedComplete ? `A1–A3 + A4 + A5 + B1–B5 + C1–C4 = ${embodied} kgCO₂e.` : 'Not calculated until each required embodied module is complete.' });
+    checks.push({ name: 'Embodied arithmetic', pass: embodiedComplete ? Number.isFinite(embodied) : null, detail: embodiedComplete ? `A1–A5 + B1–B5 + C1–C4 = ${embodied} kgCO₂e; operational B6/B7 are excluded.` : 'Not calculated until each required embodied module is complete.' });
     checks.push({ name: 'Operational arithmetic', pass: operational != null ? Number.isFinite(operational) : null, detail: operational != null ? `Selected B6 series = ${operational} ${modules.B6.metricUnit === 'kgCO2e/kWh' ? 'kgCO₂e' : 'kgCO₂'} over ${period} years; annual electricity and fuel use are held constant.` : 'Not calculated until annual electricity and fuel use, sources, provenance and study period are provided with compatible units.' });
-    checks.push({ name: 'Whole-life total', pass: wholeLifeComplete ? Number.isFinite(wholeLife) : null, detail: wholeLifeComplete ? `A1–A5 + B1–B6 + C1–C4 = ${wholeLife} kgCO₂e; Module D excluded.` : 'Not calculated; one or more required A–C modules are missing.' });
-    checks.push({ name: 'Embodied / operational shares', pass: shares ? (Math.abs(shares.embodiedPercent + shares.operationalPercent - 100) < 0.1) : null, detail: shares ? 'Both shares are generated from the selected whole-life total; D is excluded.' : 'Shares are unavailable until the full A–C total is calculable.' });
+    checks.push({ name: 'Whole-life total', pass: wholeLifeComplete ? Number.isFinite(wholeLife) : null, detail: wholeLifeComplete ? `A1–A5 + B1–B7 + C1–C4 = ${wholeLife} kgCO₂e; Module D excluded.` : 'Not calculated; one or more required A–C modules are missing.' });
+    checks.push({ name: 'Embodied / operational shares', pass: shares ? (Math.abs(shares.embodiedPercent + shares.operationalPercent - 100) < 0.1) : null, detail: shares ? 'Embodied modules and operational B6/B7 together equal the selected whole-life total; D is excluded.' : 'Shares are unavailable until the full A–C total is calculable.' });
     checks.push({ name: 'Embodied share', pass: shares ? (Math.abs(shares.embodiedPercent - (embodied / wholeLife * 100)) < 0.000001) : null, detail: shares ? `${shares.embodiedPercent}% = non-B6 A–C modules ÷ selected whole-life total.` : 'Not calculated until a compatible CO₂e whole-life total is available.' });
-    checks.push({ name: 'Operational share', pass: shares ? (Math.abs(shares.operationalPercent - (selected.operational / wholeLife * 100)) < 0.000001) : null, detail: shares ? `${shares.operationalPercent}% = B6 ÷ selected whole-life total.` : 'Not calculated until a compatible CO₂e whole-life total is available.' });
+    checks.push({ name: 'Operational share', pass: shares ? (Math.abs(shares.operationalPercent - ((selected.operational + modules.B7.value) / wholeLife * 100)) < 0.000001) : null, detail: shares ? `${shares.operationalPercent}% = (B6 + B7) ÷ selected whole-life total.` : 'Not calculated until a compatible CO₂e whole-life total is available.' });
     checks.push({ name: 'Scenario reduction', pass: reductionPercent != null ? Number.isFinite(reductionPercent) : null, detail: reductionPercent != null ? `Baseline − selected = ${delta} kgCO₂e; reduction ${reductionPercent}%.` : 'No reduction shown until baseline and selected scenario are both complete.' });
     checks.push({ name: 'Replacement schedule', pass: modules.B4.complete, detail: replacementLines.length ? replacementLines.map(line => `${line.name}: ${line.replacements} replacement(s) at ${line.years.join(', ') || 'none in period'}`).join('; ') : replacements.confirmNone ? 'User confirmed no B4 replacements.' : 'No sourced component service-life schedule or zero confirmation provided.' });
     checks.push({ name: 'Grid factor', pass: Boolean(gridRecord?.url) && (gridKey !== 'custom' || (gridRecord.metricUnit === 'kgCO2e/kWh' && Number.isInteger(gridRecord.publicationYear) && hasText(gridRecord.status) && hasText(gridRecord.region) && hasText(gridRecord.boundary))), detail: gridRecord ? `${gridRecord.value} ${gridRecord.metricUnit || gridRecord.unit}; ${gridRecord.status || 'publication year / time status required'}; ${gridRecord.lossNote || (gridRecord.includesTransmissionDistributionLosses == null ? 'T&D-loss treatment is not documented.' : `T&D losses ${gridRecord.includesTransmissionDistributionLosses ? 'included' : 'excluded'}.`)}` : 'Grid factor source missing.' });

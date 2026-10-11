@@ -12,8 +12,44 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="analysis.css" />
+    <link rel="stylesheet" href="auth.css" />
   </head>
-  <body>
+  <body data-auth-state="loading">
+    <main id="auth-root" class="auth-root" aria-live="polite">
+      <section id="auth-loading" class="auth-stage auth-loading" aria-label="Loading your workspace"><span class="auth-mark" aria-hidden="true">C</span><span>Opening your workspace…</span></section>
+      <section id="auth-entry" class="auth-stage auth-entry" hidden>
+        <div class="auth-brand"><span class="auth-mark" aria-hidden="true">C</span><span>carbonwise<span>.</span></span></div>
+        <div class="auth-copy"><h1 id="auth-heading">A clearer view of your building’s carbon.</h1><p>Sign in to work on your private project data.</p></div>
+        <form id="auth-form" class="auth-form" novalidate>
+          <label>Email address<input id="auth-email" type="email" autocomplete="email" required maxlength="254" /></label>
+          <label>Password<input id="auth-password" type="password" autocomplete="current-password" required minlength="12" maxlength="128" /></label>
+          <button id="auth-submit" class="button button-dark auth-submit" type="submit">Sign in</button>
+          <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+        </form>
+        <div class="auth-links"><button id="auth-mode-toggle" class="auth-link" type="button">Create an account</button><button id="auth-forgot" class="auth-link" type="button">Forgot password?</button></div>
+        <p class="auth-security">Your projects are private to your account.</p>
+      </section>
+      <section id="auth-reset" class="auth-stage auth-entry" hidden>
+        <div class="auth-brand"><span class="auth-mark" aria-hidden="true">C</span><span>carbonwise<span>.</span></span></div>
+        <div class="auth-copy"><h1>Choose a new password.</h1><p>Use at least 12 characters. You’ll use it the next time you sign in.</p></div>
+        <form id="reset-form" class="auth-form"><label>New password<input id="reset-password" type="password" autocomplete="new-password" required minlength="12" maxlength="128" /></label><button class="button button-dark auth-submit" type="submit">Update password</button><p id="reset-message" class="auth-message" role="status" aria-live="polite"></p></form>
+      </section>
+      <section id="auth-workspace" class="auth-stage auth-entry" hidden>
+        <div class="auth-brand"><span class="auth-mark" aria-hidden="true">C</span><span>carbonwise<span>.</span></span></div>
+        <div class="onboarding-progress"><i></i><span>Workspace setup · 1 of 2</span></div>
+        <div class="auth-copy"><h1>Set up your workspace.</h1><p>Keep the carbon work for your practice together. You can change this name later.</p></div>
+        <form id="workspace-form" class="auth-form"><label>Workspace name<input id="workspace-name" required minlength="2" maxlength="80" placeholder="e.g. Northline Studio" /></label><button class="button button-dark auth-submit" type="submit">Continue</button><p id="workspace-message" class="auth-message" role="status" aria-live="polite"></p></form>
+        <button id="workspace-signout" class="auth-link" type="button">Sign out</button>
+      </section>
+      <section id="auth-project" class="auth-stage auth-entry" hidden>
+        <div class="auth-brand"><span class="auth-mark" aria-hidden="true">C</span><span>carbonwise<span>.</span></span></div>
+        <div class="onboarding-progress"><i></i><span>Workspace setup · 2 of 2</span></div>
+        <div class="auth-copy"><h1>Start with one building.</h1><p>Create a project, then add the quantities and evidence your assessment needs.</p></div>
+        <form id="first-project-form" class="auth-form project-form"><label>Project name<input name="name" required minlength="2" maxlength="120" placeholder="e.g. West Yard Retrofit" /></label><label>Location<select name="location"><option value="">Select location</option><option>Mumbai</option><option>Delhi</option><option>Bengaluru</option><option>Jaipur</option></select></label><label>Building type<select name="building_type"><option value="">Select type</option><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="institutional">Institutional</option></select></label><div class="auth-field-pair"><label>Floor plate area (m²)<input name="floor_plate_m2" type="number" min="1" max="10000000" step="any" required /></label><label>Floors<input name="floors" type="number" min="1" max="10000" step="1" required /></label></div><label>Study period (years)<input name="study_period_years" type="number" min="1" max="200" step="1" value="50" required /></label><button class="button button-dark auth-submit" type="submit">Create project</button><p id="project-message" class="auth-message" role="status" aria-live="polite"></p></form>
+        <button id="project-signout" class="auth-link" type="button">Sign out</button>
+      </section>
+      <section id="auth-error" class="auth-stage auth-entry" hidden><div class="auth-brand"><span class="auth-mark" aria-hidden="true">C</span><span>carbonwise<span>.</span></span></div><div class="auth-copy"><h1>We couldn’t open your workspace.</h1><p id="auth-error-copy">Check your connection and try again.</p></div><button id="auth-retry" class="button button-dark auth-submit" type="button">Try again</button><button id="auth-error-signout" class="auth-link" type="button">Sign out</button></section>
+    </main>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Main navigation">
         <a class="brand" href="#top" aria-label="Carbonwise home">
@@ -38,7 +74,7 @@
       <main id="top" class="main-content">
         <header class="topbar">
           <div class="breadcrumbs">Projects <span>/</span> <strong id="crumb-project">Untitled building</strong></div>
-          <div class="top-actions"><span class="saved-status"><i></i><span id="saved-status-text">Saved in this browser</span></span><button class="button button-dark button-small" id="print-report"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4h-2M7 14h10v7H7z"/></svg>Export report</button></div>
+          <div class="top-actions"><span class="saved-status"><i></i><span id="saved-status-text">Connecting…</span></span><label class="project-picker-label"><span class="sr-only">Current project</span><select id="project-picker" aria-label="Current project"></select></label><button class="button button-small" id="new-project" type="button">New project</button><span id="user-email-label" class="user-email-label"></span><button id="auth-signout" class="button button-small auth-signout" type="button">Sign out</button><button class="button button-dark button-small" id="print-report"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4h-2M7 14h10v7H7z"/></svg>Export report</button></div>
         </header>
 
         <div class="page-wrap">
@@ -94,11 +130,11 @@
 
               <section class="panel materials-panel">
                 <div class="panel-heading"><div><span class="section-kicker">MATERIALS & ENERGY</span><h2>What goes into the building</h2></div><button class="text-button" id="toggle-details" aria-expanded="false">Show factors <span>＋</span></button></div>
-                <div class="material-table-wrap"><table class="material-table audit-material-table"><thead><tr><th>Material</th><th>Estimated quantity (kg)</th><th>Illustrative A1–A3 factor (kgCO₂e/kg)</th><th>Product-stage A1–A3 (kgCO₂e)</th></tr></thead><tbody id="material-rows"></tbody></table></div>
+                <div class="material-table-wrap"><table class="material-table audit-material-table"><thead><tr><th>Material</th><th>Quantity (kg) and evidence</th><th>Factor (kgCO₂e/kg) and evidence</th><th>Product-stage A1–A3 (kgCO₂e)</th></tr></thead><tbody id="material-rows"></tbody></table></div>
                 <div class="factor-detail" id="factor-detail" hidden><strong>Factor record status</strong><p>Preloaded factors are illustrative and unverified. Enter project-specific cited factors with declared units, geography and boundary before using results for real decisions.</p></div>
                 <div class="factor-source-list" id="factor-source-list" aria-live="polite"></div>
                 <section class="quantity-estimator" aria-labelledby="quantity-estimator-title">
-                  <div class="estimator-heading"><div><strong id="quantity-estimator-title">Estimate material quantities</strong><p>Use your own material intensities. No benchmark values are prefilled.</p></div><span class="estimator-area" id="estimator-area">Gross floor area: —</span></div>
+                  <div class="estimator-heading"><div><strong id="quantity-estimator-title">Estimate material quantities</strong><p>Illustrative starting intensities are editable and do not replace a project takeoff.</p></div><span class="estimator-area" id="estimator-area">Gross floor area: —</span></div>
                   <div class="estimator-grid" id="estimator-inputs"></div>
                   <button class="button button-small estimator-button" id="estimate-quantities" type="button">Apply estimates to material quantities</button>
                   <span class="estimator-status" id="estimator-status" role="status">Enter an intensity in kg/m² for each material you want to estimate.</span>
@@ -126,7 +162,7 @@
                   <label class="field">High annual factor decline <span class="unit">% / year</span><input id="high-rate" type="number" min="0" max="99.99" step="any" placeholder="User scenario input" /></label>
                 </div>
                 <section class="audit-modules" aria-labelledby="module-input-title"><div class="panel-heading"><div><span class="section-kicker">LIFE-CYCLE MODULES</span><h2 id="module-input-title">Complete the project boundary</h2></div></div>
-                  <p class="small-note">Required modules are shown separately. Enter project data and its source; explicit zero values require a source or a documented zero confirmation. Module D stays outside the A–C total.</p>
+                  <p class="small-note">Enter project data and its source for each module. B7 is operational water and is reported separately from embodied carbon. Explicit zero values need a documented basis. Module D stays outside the A–C total.</p>
                   <div class="transport-fields"><strong>A4 · Product transport</strong><div class="audit-input-grid"><label class="field">Transported mass <span class="unit">kg</span><input id="a4-mass" type="number" min="0" step="any" /></label><label class="field">Distance <span class="unit">km</span><input id="a4-distance" type="number" min="0" step="any" /></label><label class="field">Outward factor <span class="unit">kgCO₂e/t·km</span><input id="a4-outward" type="number" min="0" step="any" /></label><label class="field">Return factor <span class="unit">kgCO₂e/t·km</span><input id="a4-return" type="number" min="0" step="any" /></label><label class="field">Route / mass source URL<input id="a4-route-source" type="url" placeholder="Project route and mass record" /></label><label class="field">Transport factor source URL<input id="a4-factor-source" type="url" placeholder="Factor / method reference" /></label></div></div>
                   <div class="transport-fields"><strong>A5 · Construction site emissions</strong><div class="audit-input-grid"><label class="field">Site electricity <span class="unit">kWh</span><input id="a5-electricity" type="number" min="0" step="any" /></label><label class="field">Electricity factor <span class="unit">kgCO₂e/kWh</span><input id="a5-electricity-factor" type="number" min="0" step="any" /></label><label class="field">Electricity-use source URL<input id="a5-electricity-source" type="url" /></label><label class="field">Electricity factor source URL<input id="a5-electricity-factor-source" type="url" /></label><label class="field">Fuel use <input id="a5-fuel" type="number" min="0" step="any" /></label><label class="field">Fuel unit<input id="a5-fuel-unit" placeholder="e.g. litre" /></label><label class="field">Fuel factor <span class="unit">kgCO₂e/unit</span><input id="a5-fuel-factor" type="number" min="0" step="any" /></label><label class="field">Fuel consumption source URL<input id="a5-fuel-source" type="url" /></label><label class="field">Fuel factor source URL<input id="a5-fuel-factor-source" type="url" /></label><label class="field">Construction waste / other A5 <span class="unit">kgCO₂e</span><input id="a5-other" type="number" min="0" step="any" /></label><label class="field field-wide">Waste / other A5 source or zero basis<input id="a5-other-source" type="text" placeholder="Cite the data or explain why zero / not applicable" /></label></div></div>
                   <div class="module-direct-grid" id="module-inputs"></div>
@@ -184,8 +220,18 @@
         </div>
       </main>
     </div>
-    <script src="material-database.js"></script>
-    <script src="calculation-engine.js"></script>
-    <script src="app.js"></script>
+    <dialog id="new-project-dialog" class="project-dialog" aria-labelledby="new-project-title">
+      <form id="new-project-form" class="auth-form project-form">
+        <div class="auth-copy"><h2 id="new-project-title">Create a project</h2><p>Start a separate building assessment in this workspace.</p></div>
+        <label>Project name<input name="name" required minlength="2" maxlength="120" /></label>
+        <label>Location<select name="location"><option value="">Select location</option><option>Mumbai</option><option>Delhi</option><option>Bengaluru</option><option>Jaipur</option></select></label>
+        <label>Building type<select name="building_type"><option value="">Select type</option><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="institutional">Institutional</option></select></label>
+        <div class="auth-field-pair"><label>Floor plate area (m²)<input name="floor_plate_m2" type="number" min="1" max="10000000" step="any" required /></label><label>Floors<input name="floors" type="number" min="1" max="10000" step="1" required /></label></div>
+        <label>Study period (years)<input name="study_period_years" type="number" min="1" max="200" step="1" value="50" required /></label>
+        <p id="new-project-message" class="auth-message" role="status" aria-live="polite"></p>
+        <div class="dialog-actions"><button id="cancel-new-project" class="button button-small" type="button">Cancel</button><button class="button button-dark button-small" type="submit">Create project</button></div>
+      </form>
+    </dialog>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>
