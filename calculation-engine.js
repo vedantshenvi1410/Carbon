@@ -32,6 +32,7 @@
   }
 
   function calculate(input, data) {
+    input = input && typeof input === 'object' ? input : {};
     const period = nullableNumber(input.studyPeriod);
     const floorPlate = nullableNumber(input.floorPlate);
     const floors = nullableNumber(input.floors);
@@ -39,7 +40,7 @@
 
     const errors = [];
     const checks = [];
-    const materials = input.materials || [];
+    const materials = Array.isArray(input.materials) ? input.materials : [];
 
     let materialTotal = 0;
     let materialComplete = materials.length > 0;
@@ -52,11 +53,11 @@
       const factorYear = nullableNumber(line.factorYear);
 
       const quantityEvidenceOk = hasText(line.quantitySource) && hasText(line.quantityEvidence);
-      const factorEvidenceOk = isNum(factor) && hasUrl(line.source) && hasText(line.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(line.dataQuality);
-      const unitOk = factorUnit === 'kgCO2e/kg' && module === 'A1–A3';
+      const factorEvidenceOk = isNum(factor) && hasText(line.sourceName) && hasUrl(line.source) && hasText(line.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(line.dataQuality);
+      const unitOk = line.quantityUnit === 'kg' && factorUnit === 'kgCO2e/kg' && module === 'A1–A3';
 
       const complete = isNum(quantity) && quantityEvidenceOk && (quantity === 0 || (factorEvidenceOk && unitOk));
-      const carbon = complete ? quantity * factor : null;
+      const carbon = complete ? (quantity === 0 ? 0 : quantity * factor) : null;
 
       if (!complete) materialComplete = false;
       else materialTotal += carbon;
@@ -65,7 +66,7 @@
         name: line.name, quantity, quantityUnit: line.quantityUnit || 'kg',
         quantitySource: line.quantitySource || '', quantityEvidence: line.quantityEvidence || '',
         factor, factorUnit, factorYear, module, source: line.source || '',
-        geography: line.geography || '', dataQuality: line.dataQuality || '',
+        sourceName: line.sourceName || '', geography: line.geography || '', dataQuality: line.dataQuality || '',
         carbon, complete
       };
     });
@@ -84,12 +85,12 @@
     const transportDistance = nullableNumber(transport.distanceKm);
     const outwardFactor = nullableNumber(transport.outwardFactor);
     const returnFactor = nullableNumber(transport.returnFactor);
-    const transportComplete = [transportMass, transportDistance, outwardFactor, returnFactor].every(isNum) && hasUrl(transport.routeSource) && hasUrl(transport.factorSource);
+    const transportComplete = [transportMass, transportDistance, outwardFactor, returnFactor].every(isNum) && transport.massUnit === 'kg' && transport.distanceUnit === 'km' && transport.distanceBasis === 'one-way' && transport.factorUnit === 'kgCO2e/t·km' && hasText(transport.factorSourceName) && hasUrl(transport.routeSource) && hasUrl(transport.factorSource);
 
     modules.A4 = {
       value: transportComplete ? (transportMass / 1000) * transportDistance * (outwardFactor + returnFactor) : null,
       formula: '(mass kg ÷ 1,000) × distance km × (outward kgCO₂e/t·km + return kgCO₂e/t·km)',
-      source: [transport.routeSource, transport.factorSource].filter(Boolean).join('; '),
+      source: [transport.routeSource, transport.factorSource].filter(Boolean).join('; '), massUnit: transport.massUnit || '', distanceUnit: transport.distanceUnit || '', distanceBasis: transport.distanceBasis || '', factorUnit: transport.factorUnit || '', factorSourceName: transport.factorSourceName || '',
       complete: transportComplete
     };
 
@@ -100,13 +101,14 @@
     const constructionFuelFactor = nullableNumber(construction.fuelFactor);
     const constructionOther = nullableNumber(construction.otherCarbon);
 
-    const constructionElectricityOk = isNum(constructionElectricity) && hasUrl(construction.electricitySource) && (constructionElectricity === 0 || (isNum(constructionElectricityFactor) && hasUrl(construction.electricityFactorSource)));
-    const constructionFuelOk = isNum(constructionFuel) && hasUrl(construction.fuelSource) && (constructionFuel === 0 || (isNum(constructionFuelFactor) && hasUrl(construction.fuelFactorSource) && hasText(construction.fuelUnit)));
-    const constructionOtherOk = isNum(constructionOther) && hasText(construction.otherSource);
+    const constructionElectricityOk = isNum(constructionElectricity) && hasUrl(construction.electricitySource) && (constructionElectricity === 0 || (isNum(constructionElectricityFactor) && construction.electricityFactorUnit === 'kgCO2e/kWh' && construction.electricityFactorModule === 'A5' && hasUrl(construction.electricityFactorSource)));
+    const constructionFuelUnitMap = { kg: 'kgCO2e/kg', L: 'kgCO2e/L', MJ: 'kgCO2e/MJ' };
+    const constructionFuelOk = isNum(constructionFuel) && hasUrl(construction.fuelSource) && (constructionFuel === 0 || (isNum(constructionFuelFactor) && construction.fuelFactorModule === 'A5' && fuelUnitMatches(construction.fuelUnit, construction.fuelFactorUnit, constructionFuelUnitMap) && hasUrl(construction.fuelFactorSource)));
+    const constructionOtherOk = isNum(constructionOther) && construction.otherUnit === 'kgCO2e' && construction.otherModule === 'A5' && hasUrl(construction.otherSource);
     const constructionComplete = constructionElectricityOk && constructionFuelOk && constructionOtherOk;
 
     modules.A5 = {
-      value: constructionComplete ? (constructionElectricity * constructionElectricityFactor) + (constructionFuel * (constructionFuelFactor || 0)) + constructionOther : null,
+      value: constructionComplete ? (constructionElectricity === 0 ? 0 : constructionElectricity * constructionElectricityFactor) + (constructionFuel === 0 ? 0 : constructionFuel * constructionFuelFactor) + constructionOther : null,
       formula: 'site electricity kWh × sourced factor + fuel quantity × sourced factor + sourced construction waste / other A5 total',
       source: [construction.electricitySource, construction.electricityFactorSource, construction.fuelSource, construction.fuelFactorSource, construction.otherSource].filter(Boolean).join('; '),
       complete: constructionComplete
@@ -118,7 +120,7 @@
     }
 
     const replacements = input.replacements || {};
-    const replacementRows = replacements.rows || [];
+    const replacementRows = Array.isArray(replacements.rows) ? replacements.rows : [];
     let replacementComplete = Boolean(replacements.confirmNone) || replacementRows.length > 0;
     let replacementTotal = 0;
 
@@ -127,8 +129,11 @@
       const serviceLife = nullableNumber(row.serviceLife);
       const initialYear = nullableNumber(row.initialYear ?? 0);
       const factor = nullableNumber(row.factor);
-      const valid = isNum(quantity) && isNum(serviceLife) && serviceLife > 0 && isNum(initialYear) && isNum(factor) && hasUrl(row.source) && hasUrl(row.serviceLifeSource) && hasText(row.quantitySource) && hasText(row.quantityEvidence) && hasText(row.dataQuality);
+      const factorYear = nullableNumber(row.factorYear);
+      const valid = isNum(quantity) && Number.isInteger(serviceLife) && serviceLife > 0 && Number.isInteger(initialYear) && isNum(initialYear) && initialYear <= period && Number.isInteger(period) && period > 0 && isNum(factor) && row.factorUnit === 'kgCO2e/kg' && row.module === 'B4' && hasText(row.sourceName) && hasUrl(row.source) && hasUrl(row.serviceLifeSource) && hasText(row.geography) && Number.isInteger(factorYear) && factorYear >= 1900 && hasText(row.quantitySource) && hasText(row.quantityEvidence) && hasText(row.dataQuality);
 
+      // Assessment interval includes its endpoint: an event at year == period is counted.
+      // Initial installation at initialYear is excluded; only subsequent service-life events are included.
       const years = valid ? Array.from({ length: Math.ceil(Math.max(0, period - initialYear) / serviceLife) }, (_, i) => initialYear + serviceLife * (i + 1)).filter(year => year <= period) : [];
       const replacementsCount = years.length;
       const carbon = valid ? quantity * factor * replacementsCount : null;
@@ -136,7 +141,7 @@
       if (!valid) replacementComplete = false;
       else replacementTotal += carbon;
 
-      return { name: row.name || 'Component', quantity, serviceLife, initialYear, factor, replacements: replacementsCount, years, carbon, source: [row.source, row.serviceLifeSource].filter(Boolean).join('; '), quantitySource: row.quantitySource || '', quantityEvidence: row.quantityEvidence || '', dataQuality: row.dataQuality || '', complete: valid };
+      return { name: row.name || 'Component', quantity, serviceLife, initialYear, factor, factorUnit: row.factorUnit || '', module: row.module || '', replacements: replacementsCount, years, carbon, source: [row.source, row.serviceLifeSource].filter(Boolean).join('; '), quantitySource: row.quantitySource || '', quantityEvidence: row.quantityEvidence || '', dataQuality: row.dataQuality || '', complete: valid };
     });
 
     if (replacementRows.length === 0 && !replacements.confirmNone) replacementComplete = false;
@@ -151,19 +156,20 @@
     const annualKwh = nullableNumber(energy.annualKwh);
     const annualFuel = nullableNumber(energy.annualFuel);
     const annualFuelFactor = nullableNumber(energy.fuelFactor);
-    const annualFuelInputComplete = isNum(annualFuel) && hasUrl(energy.fuelSource) && (annualFuel === 0 || (isNum(annualFuelFactor) && hasText(energy.fuelUnit) && hasUrl(energy.fuelFactorSource)));
+    const fuelUnitMap = { kg: 'kgCO2e/kg', L: 'kgCO2e/L', MJ: 'kgCO2e/MJ' };
+    const annualFuelInputComplete = isNum(annualFuel) && hasUrl(energy.fuelSource) && (annualFuel === 0 || (isNum(annualFuelFactor) && fuelUnitMatches(energy.fuelUnit, energy.fuelFactorUnit, fuelUnitMap) && hasUrl(energy.fuelFactorSource)));
 
     const gridKey = energy.gridFactorId;
     const gridRecord = gridKey === 'custom'
-      ? { value: nullableNumber(energy.customFactor), unit: energy.customUnit, region: energy.customRegion, boundary: energy.customBoundary, source: energy.customSource, url: energy.customSource, publicationYear: nullableNumber(energy.customYear), status: energy.customTemporal, metricUnit: energy.customUnit, includesTransmissionDistributionLosses: energy.customLosses === 'yes' ? true : energy.customLosses === 'no' ? false : null, lossNote: energy.customLosses === 'unknown' ? 'Transmission/distribution losses not identified.' : '' }
-      : data.electricityFactors[gridKey];
+      ? { value: nullableNumber(energy.customFactor), unit: energy.customUnit, region: energy.customRegion, boundary: energy.customBoundary, source: energy.customSourceName, url: energy.customSource, publicationYear: nullableNumber(energy.customYear), status: energy.customTemporal, metricUnit: energy.customUnit, includesTransmissionDistributionLosses: energy.customLosses === 'yes' ? true : energy.customLosses === 'no' ? false : null, lossNote: energy.customLosses === 'unknown' ? 'Transmission/distribution losses not identified.' : '' }
+      : data?.electricityFactors?.[gridKey] || null;
 
-    const energyUseComplete = isNum(annualKwh) && gridRecord && isNum(gridRecord.value) && hasUrl(gridRecord.url) && hasText(energy.quality) && hasUrl(energy.consumptionSource) && annualFuelInputComplete && (gridKey !== 'custom' || (gridRecord.metricUnit === 'kgCO2e/kWh' && Number.isInteger(gridRecord.publicationYear) && gridRecord.publicationYear >= 1900 && hasText(gridRecord.status) && hasText(gridRecord.region) && hasText(gridRecord.boundary))) && !(gridKey !== 'custom' && annualFuel > 0);
+    const energyUseComplete = isNum(annualKwh) && gridRecord && isNum(gridRecord.value) && hasText(gridRecord.source) && hasUrl(gridRecord.url) && ['kgCO2/kWh', 'kgCO2e/kWh'].includes(gridRecord.metricUnit) && Number.isInteger(gridRecord.publicationYear) && gridRecord.publicationYear >= 1900 && hasText(gridRecord.region) && hasText(gridRecord.boundary) && hasText(gridRecord.status) && hasText(energy.quality) && hasText(energy.consumptionSource) && annualFuelInputComplete && (annualFuel === 0 || (energy.fuelMetricUnit === gridRecord.metricUnit && hasText(energy.fuelUnit)));
 
     const scenarios = Object.create(null);
     const currentFactor = gridRecord?.value ?? null;
     if (energyUseComplete) {
-      const annualFuelCarbon = annualFuel * (annualFuelFactor || 0);
+      const annualFuelCarbon = annualFuel === 0 ? 0 : annualFuel * annualFuelFactor;
       scenarios.constant = operationalSeries(annualKwh, currentFactor, 0, period, annualFuelCarbon);
       const moderateRate = nullableNumber(energy.moderateAnnualReduction);
       const highRate = nullableNumber(energy.highAnnualReduction);
@@ -190,11 +196,6 @@
     for (const code of REQUIRED_MODULES) {
       const mod = modules[code];
       if (!mod.complete) errors.push(`${code} is incomplete: enter the required value(s) and source, or explicitly confirm zero where applicable.`);
-    }
-    if (gridKey !== 'custom' && annualFuel > 0) {
-      // Normailze CEA CO2 to CO2e by treating them as equivalent for this prototype
-      // but marking the result as provisional.
-      modules.B6.wholeLifeCompatible = true;
     }
     if (modules.B6.complete && !modules.B6.wholeLifeCompatible) errors.push('The CEA factor is CO₂-only; it can produce a separate B6 CO₂ result when no fuel is included, but cannot be summed into a CO₂e whole-life total. Supply a sourced kgCO₂e/kWh factor to complete the WLCA.');
     if (!Number.isInteger(period) || period <= 0) errors.push('Study period must be a positive whole number of years.');
@@ -231,7 +232,8 @@
     const baselineCarbonIntensity = baseline.wholeLife != null && area != null && area > 0 ? baseline.wholeLife / area : null;
     const materialShares = modules['A1–A3'].value != null && modules['A1–A3'].value !== 0 ? Object.fromEntries(materialLines.map(line => [line.name, line.carbon == null ? null : line.carbon / modules['A1–A3'].value * 100])) : null;
     const moduleShares = wholeLife != null && wholeLife !== 0 ? Object.fromEntries(REQUIRED_MODULES.map(code => [code, modules[code].value / wholeLife * 100])) : null;
-    const budgetComparison = input.carbonBudget != null && selected.wholeLife != null ? { targetKg: Number(input.carbonBudget) * 1000, differenceKg: selected.wholeLife - Number(input.carbonBudget) * 1000, within: selected.wholeLife <= Number(input.carbonBudget) * 1000 } : null;
+    const budgetValue = nullableNumber(input.carbonBudget);
+    const budgetComparison = isNum(budgetValue) && selected.wholeLife != null ? { targetKg: budgetValue * 1000, differenceKg: selected.wholeLife - budgetValue * 1000, within: selected.wholeLife <= budgetValue * 1000 } : null;
 
     checks.push({ name: 'Study period', pass: Number.isInteger(period) && period > 0, detail: `${period == null ? 'Missing' : Number.isInteger(period) ? period : 'Invalid'} years; all lifetime calculations use the study period field.` });
     checks.push({ name: 'Floor area', pass: area != null, detail: area == null ? 'Area incomplete.' : `${floorPlate} m² × ${floors} floors = ${area} m² GFA.` });
@@ -281,7 +283,7 @@
   }
 
   function operationalSeries(annualKwh, firstYearFactor, annualReduction, period, annualFuelCarbon = 0) {
-    if (!Number.isInteger(period) || period <= 0) return null;
+    if (!isNum(annualKwh) || !isNum(firstYearFactor) || !isNum(annualFuelCarbon) || !isNum(annualReduction) || annualReduction >= 1 || !Number.isInteger(period) || period <= 0) return null;
     const annual = [];
     for (let year = 1; year <= period; year++) {
       const factor = firstYearFactor * Math.pow(1 - annualReduction, year - 1);
@@ -290,111 +292,53 @@
     return { total: annual.reduce((sum, row) => sum + row.carbonKg, 0), annual };
   }
 
+  function fuelUnitMatches(unit, factorUnit, supportedUnits) {
+    return hasText(unit) && supportedUnits[unit] === factorUnit;
+  }
+
   function calculateConcreteMix(mix, projectVolume) {
-    if (!mix || !mix.constituents) return createResult(null, 'incomplete');
+    const projectVolumeNum = nullableNumber(projectVolume);
+    if (!isNum(projectVolumeNum) || projectVolumeNum === 0) {
+      return createResult(null, 'invalid', ['Project volume is missing or invalid']);
+    }
+    if (!mix || !Array.isArray(mix.constituents) || mix.constituents.length === 0) return createResult(null, 'incomplete', ['Constituent records are missing or malformed']);
 
     let mixCarbonPerM3 = 0;
-    let complete = true;
+    let complete = mix.constituents.length > 0;
     const errors = [];
 
     for (const c of mix.constituents) {
       const mass = nullableNumber(c.mass);
       const factor = nullableNumber(c.factor);
-      if (!isNum(mass) || !isNum(factor)) {
+      const requiredMetadata = [
+        ['mass unit', c.massUnit === 'kg/m3'],
+        ['factor unit', c.factorUnit === 'kgCO2e/kg'],
+        ['lifecycle boundary', c.module === 'A1–A3'],
+        ['source name', hasText(c.sourceName)],
+        ['source URL', hasUrl(c.source)],
+        ['geography', hasText(c.geography)],
+        ['reference year', Number.isInteger(c.referenceYear) && c.referenceYear >= 1900],
+        ['data quality', hasText(c.dataQuality)]
+      ];
+      const missingMetadata = requiredMetadata.filter(([, valid]) => !valid).map(([name]) => name);
+      if (!isNum(mass) || !isNum(factor) || missingMetadata.length) {
         complete = false;
-        errors.push(`Constituent ${c.name} has missing mass or factor`);
+        errors.push(`Constituent ${c.name} has invalid/missing mass or factor${missingMetadata.length ? `; missing/invalid ${missingMetadata.join(', ')}` : ''}`);
       } else {
         mixCarbonPerM3 += mass * factor;
       }
     }
 
-    const projectVolumeNum = nullableNumber(projectVolume);
-    if (!isNum(projectVolumeNum)) {
-      return createResult(null, 'invalid', ['Project volume is missing or invalid']);
-    }
-
+    if (!complete) return createResult(null, 'incomplete', errors);
     const totalCarbon = mixCarbonPerM3 * projectVolumeNum;
 
     return {
       value: totalCarbon,
       carbonPerM3: mixCarbonPerM3,
       totalCarbon: totalCarbon,
-      status: complete ? 'complete' : 'incomplete',
+      status: 'complete',
       errors: errors,
       complete: complete
-    };
-  }
-
-  function calculateQuick(input, data) {
-    // Map quick inputs to detailed engine format
-    const detailedInput = {
-      studyPeriod: input.lifetime,
-      floorPlate: input.floorArea,
-      floors: input.floors,
-      materials: input.materials || [],
-      energy: {
-        annualKwh: input.annualKwh,
-        gridFactorId: input.location, // Simplified: treating location as gridKey for prototype
-      },
-      // Provide minimal defaults for other required modules to allow partial result
-      modules: {
-        'A4': { amount: 0, source: 'Assumed zero' },
-        'A5': { amount: 0, source: 'Assumed zero' },
-        'B1': { amount: 0, source: 'Assumed zero' },
-        'B2': { amount: 0, source: 'Assumed zero' },
-        'B3': { amount: 0, source: 'Assumed zero' },
-        'B5': { amount: 0, source: 'Assumed zero' },
-        'C1': { amount: 0, source: 'Assumed zero' },
-        'C2': { amount: 0, source: 'Assumed zero' },
-        'C3': { amount: 0, source: 'Assumed zero' },
-        'C4': { amount: 0, source: 'Assumed zero' },
-      }
-    };
-
-    // Since calculate() expects a full WLCA, for the "Quick" version, we'll perform a simplified version
-    // but using the logic of the detailed engine.
-
-    const area = nullableNumber(input.floorArea) * nullableNumber(input.floors);
-    const years = nullableNumber(input.lifetime) || 50;
-    const loc = data.locationAssumptions[input.location] || data.locationAssumptions.Mumbai;
-    const typeFactor = data.buildingTypeFactors[input.buildingType] || 1;
-
-    const materialLines = (input.materials || []).map(m => {
-      const q = nullableNumber(m.quantity);
-      const ef = nullableNumber(m.factor);
-      return { ...m, q, ef, carbon: (isNum(q) && isNum(ef)) ? q * ef : null };
-    });
-
-    const embodied = materialLines.reduce((s, x) => s + (x.carbon || 0), 0);
-    const eui = loc.eui * typeFactor;
-    const annualKwh = input.annualKwh !== '' ? nullableNumber(input.annualKwh) : area * eui;
-
-    const operationalSeriesResult = operationalSeries(annualKwh, loc.grid, 0, years);
-    const operational = operationalSeriesResult?.total ?? null;
-
-    const base = (isNum(embodied) && isNum(operational)) ? embodied + operational : null;
-
-    const reductions = (input.selectedOptions || []).map(id => {
-      const o = data.options?.find(z => z.id === id) || {};
-      const saving = nullableNumber(o.saving);
-      let carbon = null;
-      if (isNum(saving)) {
-        if (o.type === 'embodied') {
-          const concreteLine = materialLines.find(x => x.id === 'concrete-opc');
-          carbon = concreteLine ? concreteLine.carbon * saving : null;
-        } else {
-          carbon = operational * saving;
-        }
-      }
-      return { id, name: o.title, carbon };
-    });
-
-    const totalReductions = reductions.reduce((s, x) => s + (x.carbon || 0), 0);
-    const selected = (isNum(base)) ? Math.max(0, base - totalReductions) : null;
-
-    return {
-      area, years, loc, annualKwh, embodied, operational, base, selected, lines: materialLines, reductions,
-      status: (isNum(base)) ? 'complete' : 'incomplete'
     };
   }
 

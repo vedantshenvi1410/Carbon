@@ -1,6 +1,6 @@
 # Carbonwise prototype
 
-A hackathon MVP for the workflow: building inputs → estimated material quantities → embodied carbon → energy estimate → operational carbon → lifecycle estimate → alternatives → optimisation → score → printable report.
+A hackathon MVP for building inputs, a partial A1–A3 product-stage estimate, and lifecycle data entry. Whole-life totals and intervention reductions remain unavailable until complete, compatible, sourced module data is supplied.
 
 ## Run locally
 
@@ -10,18 +10,16 @@ Open `index.html` in a browser, or serve the folder with a static HTTP server. T
 
 - Gross floor area = floor plate × floors.
 - Material quantities = gross floor area × editable material-intensity assumptions selected by structural system.
-- Embodied estimate = Σ(material quantity × A1–A3 proxy factor).
-- Annual energy uses the editable electricity input. The starting estimate is floor area × city energy intensity × building-type factor.
-- Operational estimate = annual electricity × city grid factor × study years.
-- Prototype lifecycle estimate = embodied + operational carbon.
-- Shading, solar and lower-carbon concrete options show simple illustrative scenario changes. Users can enter project costs; mix candidates are shown but remain unscored without product data.
-- Sensitivity band is a simple ±25% demo range. The 0–100 index is a transparent prototype mapping, not a rating system.
+- Product-stage estimate = Σ(material quantity × illustrative A1–A3 proxy factor).
+- Operational results require a sourced factor record with compatible units and are not fabricated from location assumptions.
+- Shading, solar and lower-carbon concrete remain visible but unscored until their actual inputs and added impacts are modeled. Mix candidates remain unscored without compatible product data.
+- No combined whole-life total or carbon intensity is shown when required modules, area, or compatible factors are missing.
 
 ## Data quality and limits
 
-Every numeric material factor, quantity intensity, city energy intensity, city grid factor, and intervention effect is illustrative, unverified, and low-confidence. Records in `material-database.js` include boundary, region, year, source label, applicability, manufacturer and EPD status. These demo values are not authoritative Indian EPD/LCA data. Replace them with traceable project or supplier data and state the applicable system boundary before using the results for real decisions.
+Every numeric material factor, quantity intensity, city energy intensity, and city grid factor is illustrative, unverified, and low-confidence. Source labels and URLs are leads for review and do not establish independent verification. These demo values are not authoritative Indian EPD/LCA data. Replace them with traceable project or supplier data and state the applicable system boundary before real-building decisions.
 
-The simplified lifecycle estimate includes A1–A3 and B6 only. It does not calculate transport, construction, maintenance, replacements, end of life, renewable export credits, structural eligibility, or engineering performance. M30 candidates require supplier-specific EPD/factors and project engineer validation; no universal GGBS limit is applied. The BEE ECSBC link is methodology context only; the prototype makes no compliance claim.
+The bundled data can support a partial illustrative A1–A3 subtotal. It does not include the sourced electricity-factor registry or project data needed to score B6, A4–A5, B1–B5, or C1–C4. M30 candidates require supplier-specific EPD/factors and project engineer validation; no universal GGBS limit is applied. The BEE ECSBC link is methodology context only; the prototype makes no compliance claim.
 
 ## Files
 

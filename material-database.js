@@ -1,7 +1,7 @@
 /* Demo catalog. Every numeric factor is illustrative, unverified, and low-confidence. */
 window.CARBONWISE_DATA = {
-  schemaVersion: '1.0-verified',
-  provenanceNote: 'Data sourced from the India Construction Materials Database (ICMD) by thinkstep/IFC and the Central Electricity Authority (CEA) of India. Factors represent cradle-to-gate (A1-A3) impacts.',
+  schemaVersion: '1.1-illustrative-unverified',
+  provenanceNote: 'Illustrative demonstration values only. Source labels and links are leads for review and do not establish that the displayed factors were verified against the referenced datasets.',
 
   materials: [
     {
@@ -16,8 +16,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Standard OPC concrete',
       color:'#739886'
     },
@@ -33,8 +33,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Blended concrete with fly ash',
       color:'#8db8a5'
     },
@@ -50,8 +50,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Blended concrete with GGBS',
       color:'#aed6c4'
     },
@@ -67,8 +67,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Generic Indian rebar',
       color:'#c9a174'
     },
@@ -84,8 +84,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Hot rolled sections',
       color:'#b58a5a'
     },
@@ -101,8 +101,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Standard kiln bricks',
       color:'#8298a0'
     },
@@ -118,8 +118,8 @@ window.CARBONWISE_DATA = {
       source:'ICMD / IFC thinkstep',
       sourceUrl: 'https://www.cecp-eu.in/',
       publicationYear:2024,
-      verificationStatus: 'Generic (Traceable)',
-      confidence:'Medium',
+      verificationStatus: 'Illustrative · unverified',
+      confidence:'Low · illustrative',
       applicability:'Autoclaved Aerated Concrete',
       color:'#a0b0b8'
     },

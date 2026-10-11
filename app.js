@@ -1,12 +1,12 @@
 /* Carbonwise hackathon MVP: transparent prototype estimates, not certification. */
 (() => {
   const $ = id => document.getElementById(id);
-  const DATA=window.CARBONWISE_DATA, locations=DATA.locationAssumptions, types=DATA.buildingTypeFactors, structures=DATA.structureQuantityAssumptions;
+  const DATA=window.CARBONWISE_DATA, structures=DATA.structureQuantityAssumptions;
   const materials=DATA.materials.map(m=>({...m,ef:m.factor}));
   const opts = [
-    {id:'low-concrete', title:'Specify lower-carbon concrete', detail:'Illustrative factor substitution; confirm mix performance and supplier EPD.', type:'embodied', saving:.04},
-    {id:'shading', title:'Add external shading', detail:'Prototype energy estimate applies an 8% cooling-demand reduction.', type:'energy', saving:.08},
-    {id:'solar', title:'Add rooftop solar PV', detail:'Prototype estimate applies an 18% annual grid-electricity offset.', type:'energy', saving:.18}
+    {id:'low-concrete', title:'Specify lower-carbon concrete', detail:'Requires comparable supplier factors and mix quantities; currently unscored.', type:'embodied'},
+    {id:'shading', title:'Add external shading', detail:'Requires a cooling-energy baseline and shading performance inputs; currently unscored.', type:'energy'},
+    {id:'solar', title:'Add rooftop solar PV', detail:'Requires generation, self-consumption, lifetime and system-factor inputs; currently unscored.', type:'energy'}
   ];
   let results;
   const fmt = (n,d=1) => {
@@ -14,23 +14,23 @@
     return Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
   };
 
-  const t = kg => kg/1000;
+  const t = kg => kg == null || !Number.isFinite(Number(kg)) ? null : Number(kg)/1000;
   const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function renderMixAlternatives() {
     const r = results;
-    const concreteOpcLine = r.lines.find(x => x.id === 'concrete-opc');
-    const projectVolume = concreteOpcLine ? (concreteOpcLine.q / 2400) : 0; // Approx 2400 kg/m3 for concrete
+    // No explicit project concrete volume / density is supplied, so mix totals stay unscored.
+    const projectVolume = null;
     const referenceMix = DATA.mixCandidates[0];
     const refResult = CARBONWISE_ENGINE.calculateConcreteMix(referenceMix, projectVolume);
-    const refCarbonPerM3 = refResult?.carbonPerM3 || 0;
+    const refCarbonPerM3 = refResult?.carbonPerM3 ?? null;
 
     const rows = DATA.mixCandidates.map((mix, i) => {
       const res = CARBONWISE_ENGINE.calculateConcreteMix(mix, projectVolume);
       if (!res || !res.complete) {
-        return `<tr class="mix-row unscored"><td><strong>${String.fromCharCode(65+i)} · ${mix.label}</strong></td><td>${mix.blend}</td><td class="mix-result">Unscored</td><td><span class="tag-warn">Factor missing</span></td></tr>`;
+        return `<tr class="mix-row unscored"><td><strong>${String.fromCharCode(65+i)} · ${mix.label}</strong></td><td>${mix.blend}</td><td class="mix-result">Unscored</td><td><span class="tag-warn">Source data / project volume needed</span></td></tr>`;
       }
 
-      const reduction = refCarbonPerM3 > 0 ? ((refCarbonPerM3 - res.carbonPerM3) / refCarbonPerM3 * 100) : 0;
+      const reduction = refResult?.status === 'complete' && refCarbonPerM3 > 0 ? ((refCarbonPerM3 - res.carbonPerM3) / refCarbonPerM3 * 100) : null;
       const reductionClass = reduction >= 0 ? 'saving' : 'increase';
 
       return `<tr class="mix-row">
@@ -40,7 +40,7 @@
           ${fmt(res.totalCarbon / 1000, 2)} t <br>
           <small>${fmt(res.carbonPerM3, 2)} kg/m³</small>
         </td>
-        <td><span class="tag ${reductionClass}">${reduction >= 0 ? '↓' : '↑'} ${fmt(Math.abs(reduction), 1)}%</span></td>
+        <td>${reduction == null ? '<span class="tag-warn">Unscored reference</span>' : `<span class="tag ${reductionClass}">${reduction >= 0 ? '↓' : '↑'} ${fmt(Math.abs(reduction), 1)}%</span>`}</td>
       </tr>`;
     }).join('');
 
@@ -51,32 +51,29 @@
 
     const warning = $('material-alternatives').querySelector('.mix-warning');
     if (warning) {
-      warning.textContent = 'LIVE CALCULATIONS';
-      warning.className = 'mix-warning live';
+      warning.textContent = 'UNSCORED · DATA NEEDED';
+      warning.className = 'mix-warning';
     }
   }
 
   function init() {
     if (!$('project-name').value) $('project-name').value='Demo Residence';
-    if (!$('location').value) $('location').value='Mumbai';
-    if (!$('building-type').value) $('building-type').value='residential';
     if (!$('floor-area').value) $('floor-area').value=120;
     if (!$('floors').value) $('floors').value=2;
     if (!$('lifetime').value) $('lifetime').value=50;
     if (!$('structure').value) $('structure').value='rcc';
-    if (!$('annual-kwh').value) $('annual-kwh').value=String((Number($('floor-area').value)||120)*(Number($('floors').value)||2)*(locations[$('location').value]?.eui||115));
-    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 proxy · verified</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} factor" value="${m.ef}" /><small>kgCO₂e/kg · ${m.verificationStatus}</small></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
+    $('material-rows').innerHTML=materials.map(m=>`<tr><td class="material-name"><i class="material-swatch" style="background:${m.color}"></i>${m.name}<small>A1–A3 · illustrative factor</small></td><td><input type="number" min="0" step="any" data-q="${m.id}" aria-label="${m.name} quantity" /></td><td><input type="number" min="0" step="any" data-ef="${m.id}" aria-label="${m.name} factor" value="${m.ef}" /><small>kgCO₂e/kg · ${m.verificationStatus}</small></td><td class="carbon-cell" data-c="${m.id}">—</td></tr>`).join('');
     $('saved-status-text').textContent='Prototype demo loaded';$('side-project').nextElementSibling.textContent='Prototype demo · India';
-    $('factor-detail').innerHTML='<strong>Prototype factor register · low confidence</strong><p>All material factors and quantity intensities are illustrative assumptions for demonstrating the workflow. They are not verified Indian EPD values. Replace with cited product data and confirm the system boundary before decisions.</p><div class="factor-record-grid">'+materials.map(m=>`<div><b>${esc(m.name)} · ${esc(m.confidence)} confidence</b><span>Factor: ${m.factor} kgCO₂e/kg · ${esc(m.boundary)}</span><span>Source: ${esc(m.source)} · ${m.year}</span><span>Region: ${esc(m.region)}</span><span>Manufacturer: ${m.manufacturer||'Not specified'} · EPD: ${m.epdAvailable?'available':'not supplied'}</span><span>Applicability: ${esc(m.applicability)}</span></div>`).join('')+'</div><p>Embodied estimate = Σ(material quantity × illustrative A1–A3 factor). The demo does not claim certification.</p>';
-    $('estimator-inputs').innerHTML=materials.map((m,i)=>`<label class="field">${m.name} <span class="unit">kg/m²</span><input type="number" min="0" step="any" data-intensity="${m.id}" value="${structures.rcc[i]}" /></label>`).join('');
+    $('factor-detail').innerHTML='<strong>Prototype factor register · low confidence</strong><p>All material factors and quantity intensities are illustrative assumptions for demonstrating the workflow. They are not verified Indian EPD values. Replace with cited product data and confirm the system boundary before decisions.</p><div class="factor-record-grid">'+materials.map(m=>`<div><b>${esc(m.name)} · ${esc(m.confidence)} confidence</b><span>Factor: ${m.factor} kgCO₂e/kg · ${esc(m.boundary)}</span><span>Source: ${esc(m.source)} · ${m.publicationYear}</span><span>Region: ${esc(m.region)}</span><span>Manufacturer: ${m.manufacturer||'Not specified'} · EPD: ${m.epdAvailable?'available':'not supplied'}</span><span>Applicability: ${esc(m.applicability)}</span></div>`).join('')+'</div><p>Product-stage estimate = Σ(material quantity × illustrative A1–A3 factor). The demo does not claim certification.</p>';
+    $('estimator-inputs').innerHTML=materials.map(m=>{const assumption=structures.rcc.find(x=>x.materialId===m.id);return `<label class="field">${m.name} <span class="unit">kg/m²</span><input type="number" min="0" step="any" data-intensity="${m.id}" value="${assumption?.intensity ?? ''}" /></label>`;}).join('');
     $('opportunity-grid').innerHTML=opts.map(o=>`<label class="opportunity-card"><input type="checkbox" data-option="${o.id}" /><span class="option-icon">↗</span><strong>${o.title}</strong><small>${o.detail}</small><b data-saving="${o.id}">Recalculate to estimate</b></label>`).join('');
     $('material-alternatives').querySelector('.panel-heading').innerHTML='<div><span class="section-kicker">MATERIAL ALTERNATIVES</span><h2>M30 mix candidates</h2><p class="panel-subtitle">Compare project-specific product data. Options remain unscored without supplier factors and engineer validation.</p></div><span class="mix-warning">UNSCORED UNTIL SOURCED</span>';
     $('material-alternatives').querySelector('.alternative-detail').innerHTML=`<div class="mix-context"><label class="field">Application<select id="mix-application"><option>Structural concrete</option><option>Slab / floor</option><option>Foundation</option><option>Non-structural</option></select></label><label class="field">Exposure<select id="mix-exposure"><option>General</option><option>Coastal / chloride</option><option>Sulphate</option><option>Other project exposure</option></select></label><div class="constraint-message"><strong>Eligibility needs project review</strong><span>Verify design strength, curing, durability, IS code requirements and supplier mix data with the project engineer. No universal GGBS cap is applied.</span></div></div><div class="mix-table-wrap"><table class="mix-table"><thead><tr><th>Candidate</th><th>Indicative composition</th><th>Carbon result</th><th>Validation</th></tr></thead><tbody>${DATA.mixCandidates.map((m,i)=>`<tr><td><strong>${String.fromCharCode(65+i)} · ${m.label}</strong></td><td>${m.blend}</td><td>Unscored · factor not supplied</td><td>Project / engineer check</td></tr>`).join('')}</tbody></table></div><div class="alternative-detail"><strong>Evidence needed</strong><p>Enter a supplier-specific EPD or declared A1–A3 factor for a like-for-like strength class, curing regime, exposure and functional unit. This screen does not assume that a mix is eligible or quantify savings.</p></div>`;
-    $('method-detail').innerHTML='<div><strong>Prototype calculation</strong><p>Gross floor area = floor plate × floors. Material quantities = gross floor area × editable material-intensity assumptions. Embodied carbon = Σ(quantity × illustrative factor). Operational carbon = annual electricity × illustrative city grid factor × study years. Prototype lifecycle estimate = embodied + operational carbon. Replacements and renewable offsets are not modelled in this MVP.</p></div><div><strong>Assumption status</strong><p>All demo quantity intensities, material factors, city energy intensities, grid factors, and intervention effects are illustrative assumptions with low confidence. The sensitivity band is a simple ±25% prototype range, not a statistical uncertainty analysis. Replace with traceable project data before decisions.</p></div><div><strong>India context</strong><p>BEE ECSBC 2024 Appendix 6 is included as methodology context for embodied-carbon reporting. This prototype makes no compliance claim.</p><a href="https://beeindia.gov.in/WriteReadData/L45218/7534511430467336.pdf" target="_blank" rel="noreferrer">BEE · ECSBC 2024 ↗</a></div>';
+    $('method-detail').innerHTML='<div><strong>Prototype calculation</strong><p>Gross floor area = floor plate × floors. Material quantities = gross floor area × editable material-intensity assumptions. Product-stage A1–A3 = Σ(quantity × illustrative factor). B6 and other lifecycle modules are not included in a combined whole-life total without compatible sourced inputs.</p></div><div><strong>Assumption status</strong><p>All demo quantity intensities, material factors, city energy intensities, grid factors, and intervention effects are illustrative assumptions with low confidence. The sensitivity band is a simple ±25% prototype range, not a statistical uncertainty analysis. Replace with traceable project data before decisions.</p></div><div><strong>India context</strong><p>BEE ECSBC 2024 Appendix 6 is included as methodology context for embodied-carbon reporting. This prototype makes no compliance claim.</p><a href="https://beeindia.gov.in/WriteReadData/L45218/7534511430467336.pdf" target="_blank" rel="noreferrer">BEE · ECSBC 2024 ↗</a></div>';
     $('project-name').addEventListener('input',calculate);
     document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calculate));
     document.addEventListener('input',event=>{if(event.target.matches('[data-cost]'))renderCosts();});
-    ['floor-area','floors','structure','location','building-type'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='structure'){(structures[$('structure').value]||structures.rcc).forEach((v,i)=>{document.querySelector(`[data-intensity="${materials[i].id}"]`).value=v;});}applyQuantities();calculate();}));
+    ['floor-area','floors','structure','location','building-type'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='structure'){const assumptions=structures[$('structure').value]||[];materials.forEach(m=>{const field=document.querySelector(`[data-intensity="${m.id}"]`);const assumption=assumptions.find(x=>x.materialId===m.id);if(field)field.value=assumption?.intensity ?? '';});}applyQuantities();calculate();}));
 
     $('annual-kwh').addEventListener('input',()=>{$('annual-kwh').dataset.userEdited='true';calculate();});
     $('estimate-quantities').addEventListener('click',applyQuantities);
@@ -87,8 +84,9 @@
     applyQuantities(); calculate();
   }
   function applyQuantities(){
-    const area=(Number($('floor-area').value)||0)*(Number($('floors').value)||0), defaults=structures[$('structure').value]||structures.rcc;
-    materials.forEach((m,i)=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const source=intensity&&Number.isFinite(Number(intensity.value))?Number(intensity.value):defaults[i]; const field=document.querySelector(`[data-q="${m.id}"]`); if(field)field.value=String(area*source);});
+    const floorPlate=Number($('floor-area').value), floors=Number($('floors').value);
+    const area=Number.isFinite(floorPlate)&&floorPlate>0&&Number.isInteger(floors)&&floors>0?floorPlate*floors:null;
+    materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); const raw=intensity?.value; const quantity=area==null?null:raw===''||raw==null?0:Number(raw)*area; if(qtyField)qtyField.value=Number.isFinite(quantity)?String(quantity):'';});
     $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; calculate();
   }
 
@@ -122,13 +120,14 @@
         return {
           name: m.name,
           quantity: m.quantity,
-          quantityUnit: matData.unit || 'kg',
-          quantitySource: 'User input',
-          quantityEvidence: 'UI value',
+          quantityUnit: matData.unit || '',
+          quantitySource: 'Prototype benchmark / user-editable input',
+          quantityEvidence: 'Estimated GFA intensity assumption or explicit zero for a material not selected by this structure benchmark; not a measured takeoff',
           factor: m.factor,
-          factorUnit: matData.factorUnit || 'kgCO2e/kg',
+          factorUnit: matData.factorUnit || '',
           factorYear: matData.publicationYear,
-          module: 'A1–A3',
+          module: matData.boundary || '',
+          sourceName: matData.source || '',
           source: matData.sourceUrl,
           geography: matData.region,
           dataQuality: matData.confidence
@@ -137,107 +136,64 @@
       energy: {
         annualKwh: input.annualKwh,
         gridFactorId: input.location,
-        quality: 'Prototype',
-        consumptionSource: 'User input',
+        quality: 'Prototype estimate',
+        consumptionSource: '',
         fuelSource: 'None',
         fuelQuantity: 0,
         fuelUnit: 'kg',
         fuelFactorSource: 'None'
       },
-      modules: {
-        'A4': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'A5': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'B1': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'B2': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'B3': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'B5': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'C1': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'C2': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'C3': { amount: 0, source: 'Assumed zero for quick estimate' },
-        'C4': { amount: 0, source: 'Assumed zero for quick estimate' },
-      },
-      transport: { massKg: 0, distanceKm: 0, outwardFactor: 0, returnFactor: 0, routeSource: 'https://example.com', factorSource: 'https://example.com' },
-      construction: { electricityKwh: 0, electricityFactor: 0, electricitySource: 'https://example.com', fuelQuantity: 0, fuelFactor: 0, fuelSource: 'https://example.com', fuelFactorSource: 'https://example.com', fuelUnit: 'kg', otherCarbon: 0, otherSource: 'https://example.com' },
-      replacements: { confirmNone: true }
+      replacements: { confirmNone: false }
     };
 
-    // 2. Apply Interventions as Input Modifiers
-    const activeOptions = input.selectedOptions;
-
-    // Lower-carbon concrete: modify the factor of the concrete-opc line
-    if (activeOptions.includes('low-concrete')) {
-      const concreteLine = detailedInput.materials.find(m => m.name.includes('OPC'));
-      if (concreteLine) {
-        // Use a slightly reduced factor (simulate the 'saving' logic from the old quick engine)
-        concreteLine.factor = Number(concreteLine.factor) * 0.96;
-      }
-    }
-
-    // Energy interventions: reduce the annualKwh
-    let energyModifier = 1.0;
-    if (activeOptions.includes('shading')) energyModifier -= 0.08;
-    if (activeOptions.includes('solar')) energyModifier -= 0.18;
-    detailedInput.energy.annualKwh = Number(detailedInput.energy.annualKwh) * energyModifier;
-
-    // 3. Execute authoritative calculation
+    // 2. Calculate baseline with sourced data only. Intervention cards remain available,
+    // but are unscored until their actual input changes and added impacts are modelled.
     const detailedResults = CARBONWISE_ENGINE.calculate(detailedInput, DATA);
 
     // 4. Adapt result object for the existing render() function
     results = {
       area: detailedResults.grossFloorArea,
       years: detailedResults.studyPeriod,
-      loc: DATA.locationAssumptions[input.location] || DATA.locationAssumptions.Mumbai,
-      annualKwh: detailedInput.energy.annualKwh,
-      embodied: detailedResults.embodied,
+      loc: DATA.locationAssumptions[input.location] || null,
+      annualKwh: Number.isFinite(Number(input.annualKwh)) && input.annualKwh !== '' ? Number(input.annualKwh) : null,
+      embodied: detailedResults.modules['A1–A3'].value,
       operational: detailedResults.operational,
       base: detailedResults.wholeLife,
-      selected: detailedResults.wholeLife,
+      selected: input.selectedOptions.length ? null : detailedResults.wholeLife,
       lines: detailedResults.materialLines,
-      reductions: [],
+      reductions: input.selectedOptions.map(id=>({id,name:opts.find(x=>x.id===id)?.title||id,carbon:null})),
       status: detailedResults.complete ? 'complete' : 'incomplete'
     };
 
     // Baseline vs Selected
-    const baselineInput = { ...detailedInput };
-    baselineInput.energy.annualKwh = Number(input.annualKwh);
-    baselineInput.materials = detailedInput.materials.map(m => {
-      if (m.name.includes('OPC')) {
-        const matData = DATA.materials.find(dbM => dbM.name === m.name) || {};
-        return { ...m, factor: matData.factor };
-      }
-      return m;
-    });
-
-    const baselineResults = CARBONWISE_ENGINE.calculate(baselineInput, DATA);
-    results.base = baselineResults.wholeLife;
-    results.selected = detailedResults.wholeLife;
+    results.base = detailedResults.wholeLife;
 
     render();
   }
   function render(){
-    const r=results,red=r.base?100*(r.base-r.selected)/r.base:0, intensity=r.area?r.base/r.area:0;
+    const r=results,red=r.base!=null&&r.selected!=null&&r.base>0?100*(r.base-r.selected)/r.base:null, intensity=r.area&&r.base!=null?r.base/r.area:null;
     $('crumb-project').textContent=$('project-name').value||'Demo Residence';$('side-project').textContent=$('crumb-project').textContent;
     $('print-project-meta').textContent=`${$('crumb-project').textContent} · ${$('location').value} · illustrative prototype`; $('print-building-meta').textContent=`${$('building-type').selectedOptions[0]?.text||'Residential'} · ${fmt(r.area,0)} m² GFA · ${r.years}-year estimate`;
-    $('study-stamp').textContent=r.years;$('lifecycle-total').textContent=fmt(t(r.base));$('embodied-total').textContent=fmt(t(r.embodied));$('operational-total').textContent=fmt(t(r.operational));$('operational-unit').textContent='tCO₂e';$('intensity-value').textContent=`${fmt(intensity,1)} kgCO₂e / m²`;
-    $('embodied-share').textContent=`${fmt(r.base?r.embodied/r.base*100:0,1)}% of estimate`;$('annual-energy').textContent=`${fmt(r.annualKwh,0)} kWh / year`;$('annual-grid').textContent=`Illustrative ${r.loc.grid} kgCO₂/kWh grid factor · ${r.loc.climate}`;
-    $('metric-uncertainty').textContent=`Illustrative sensitivity range ${fmt(t(r.base*.75),1)}–${fmt(t(r.base*1.25),1)} tCO₂e (±25%) · low confidence`;$('lifecycle-status').textContent='PROTOTYPE ESTIMATE';$('op-final-year').textContent=`YEAR ${r.years}`;
-    $('profile-intensity').innerHTML=`${fmt(intensity,1)} <small>kgCO₂e/m²</small>`;$('profile-energy').innerHTML=`${fmt(r.annualKwh,0)} <small>kWh/year</small>`;$('profile-lifetime').innerHTML=`${r.years} <small>years</small>`;$('scope-caption').textContent='PROTOTYPE LIFECYCLE ESTIMATE · A1–A3 + B6 · ILLUSTRATIVE';
-    $('donut-total').textContent=fmt(t(r.base));const ep=r.base?r.embodied/r.base*100:0;$('donut').style.background=`conic-gradient(#739886 0 ${ep}%,#c9dcd2 ${ep}% 100%)`;$('donut-legend').innerHTML=`<div class="legend-row"><i></i><span>Embodied · A1–A3</span><strong>${fmt(ep,1)}%</strong></div><div class="legend-row"><i></i><span>Operational · B6</span><strong>${fmt(100-ep,1)}%</strong></div>`;
-    $('total-line-embodied').style.width=`${ep}%`;$('total-line-operational').style.width=`${100-ep}%`;
+    $('study-stamp').textContent=r.years??'—';$('lifecycle-total').textContent=fmt(t(r.base));$('embodied-total').textContent=fmt(t(r.embodied));$('operational-total').textContent=fmt(t(r.operational));$('operational-unit').textContent='tCO₂';$('intensity-value').textContent=`${fmt(intensity,1)} kgCO₂e / m²`;
+    $('embodied-share').textContent='A1–A3 product-stage subtotal · partial scope';$('annual-energy').textContent=`${fmt(r.annualKwh,0)} kWh / year`;$('annual-grid').textContent=r.loc?`Illustrative ${r.loc.grid} kgCO₂/kWh · factor provenance unavailable; B6 not scored`:'Grid factor unavailable: select a location with traceable factor data';
+    $('metric-uncertainty').textContent=r.base==null?'Whole-life total unavailable: required lifecycle modules and compatible sourced factors are missing.':`Illustrative sensitivity range ${fmt(t(r.base*.75),1)}–${fmt(t(r.base*1.25),1)} tCO₂e (±25%) · low confidence`;$('lifecycle-status').textContent=r.status==='complete'?'COMPLETE FOR DECLARED SCOPE':'PARTIAL · INPUTS MISSING';$('op-final-year').textContent=`YEAR ${r.years??'—'}`;
+    $('profile-intensity').innerHTML=`${fmt(intensity,1)} <small>kgCO₂e/m²</small>`;$('profile-energy').innerHTML=`${fmt(r.annualKwh,0)} <small>kWh/year</small>`;$('profile-lifetime').innerHTML=`${r.years??'—'} <small>years</small>`;$('scope-caption').textContent='PRODUCT-STAGE A1–A3 PARTIAL ESTIMATE · B6 AND OTHER A–C MODULES UNAVAILABLE';
+    $('donut-total').textContent=fmt(t(r.base));const ep=r.base!=null&&r.embodied!=null?r.embodied/r.base*100:null;$('donut').style.background=ep==null?'#edf1ef':`conic-gradient(#739886 0 ${ep}%,#c9dcd2 ${ep}% 100%)`;$('donut-legend').innerHTML=ep==null?'<div class="legend-row"><i></i><span>Whole-life shares unavailable</span><strong>—</strong></div>':`<div class="legend-row"><i></i><span>Non-B6 A–C lifecycle</span><strong>${fmt(ep,1)}%</strong></div><div class="legend-row"><i></i><span>Operational · B6</span><strong>${fmt(100-ep,1)}%</strong></div>`;
+    $('total-line-embodied').style.width=`${ep??0}%`;$('total-line-operational').style.width=`${ep==null?0:100-ep}%`;
     r.lines.forEach(x=>{const el=document.querySelector(`[data-c="${x.id}"]`);if(el)el.textContent=`${fmt(x.carbon,0)} kg`;});
-    $('embodied-bars').innerHTML=r.lines.map(x=>`<i title="${x.name}: ${fmt(x.carbon,0)} kgCO₂e" style="height:${Math.max(7,r.embodied?x.carbon/r.embodied*100:0)}%"></i>`).join('');
-    const score=Math.max(0,Math.min(100,Math.round(red)));$('score-value').textContent=String(score);$('score-track').style.width=`${score}%`;$('score-copy').textContent=`Transparent score = lifecycle-carbon reduction versus the prototype baseline: ${fmt(red,1)}%. It is not a certification or benchmark.`;
+    $('embodied-bars').innerHTML=r.lines.map(x=>`<i title="${x.name}: ${fmt(x.carbon,0)} kgCO₂e" style="height:${x.carbon==null?0:Math.max(7,r.embodied?x.carbon/r.embodied*100:0)}%"></i>`).join('');
+    const score=red==null?null:Math.max(0,Math.min(100,Math.round(red)));$('score-value').textContent=score==null?'—':String(score);$('score-track').style.width=`${score??0}%`;$('score-copy').textContent=red==null?'No comparable complete baseline/scenario total is available; selected interventions remain unscored.':'Prototype comparison only; not a certification or benchmark.';
     $('confidence-value').textContent='LOW';$('quality-project-bar').style.width='0%';$('quality-source-bar').style.width='0%';$('quality-missing-bar').style.width='100%';$('quality-legend').innerHTML='<span><i class="q-assumed"></i><strong>100%</strong> preliminary assumptions · low confidence</span>';$('quality-foot').textContent='Replace demo assumptions with project quantities, supplier EPDs, and cited energy data.';
-    $('optimised-total').textContent=fmt(t(r.selected));$('reduction-chip').textContent=`${fmt(red,1)}% lifecycle reduction`; $('opportunity-count').textContent=String(r.reductions.length);
-    r.reductions.forEach(x=>{const el=document.querySelector(`[data-saving="${x.id}"]`);if(el)el.textContent=`Estimated reduction · ${fmt(t(x.carbon),2)} tCO₂e`;});
-    $('comparison-summary').innerHTML=`<div><small>BASELINE · PROTOTYPE</small><strong>${fmt(t(r.base))} <i>tCO₂e</i></strong><span>Embodied ${fmt(t(r.embodied))} t · Operational ${fmt(t(r.operational))} t</span></div><div><small>SELECTED DESIGN</small><strong>${fmt(t(r.selected))} <i>tCO₂e</i></strong><span>${r.reductions.length?esc(r.reductions.map(x=>x.name).join(' · ')):'No interventions selected'}</span></div><div class="avoided-stat"><small>ESTIMATED CHANGE</small><strong>${fmt(t(r.base-r.selected),2)} tCO₂e · ${fmt(red,1)}%</strong><span>Compared with the prototype baseline using the same assumptions.</span></div>`;
-    $('lifecycle-chart').innerHTML=[['A1–A3 · embodied',r.embodied],['B6 · operational',r.operational]].map(x=>`<div class="stacked-row"><span>${x[0]}</span><div class="stacked-track"><i class="stack-embodied" style="width:${r.base?x[1]/r.base*100:0}%"></i></div><strong>${fmt(t(x[1]),2)} t</strong></div>`).join('')+'<div class="chart-legend">Other lifecycle modules are outside this prototype estimate.</div>';
+    $('optimised-total').textContent=fmt(t(r.selected));$('reduction-chip').textContent=red==null?'UNSCORED':`${fmt(red,1)}% reduction`; $('opportunity-count').textContent=String(r.reductions.length);
+    r.reductions.forEach(x=>{const el=document.querySelector(`[data-saving="${x.id}"]`);if(el)el.textContent='Unscored · intervention inputs and impacts not modelled';});
+    $('comparison-summary').innerHTML=`<div><small>BASELINE · PARTIAL SCOPE</small><strong>${fmt(t(r.base))} <i>tCO₂e</i></strong><span>Product-stage subtotal ${fmt(t(r.embodied))} t · B6 ${fmt(t(r.operational))}</span></div><div><small>SELECTED DESIGN</small><strong>${fmt(t(r.selected))} <i>tCO₂e</i></strong><span>${r.reductions.length?esc(r.reductions.map(x=>x.name).join(' · ')):'No interventions selected'}</span></div><div class="avoided-stat"><small>ESTIMATED CHANGE</small><strong>${r.base!=null&&r.selected!=null?`${fmt(t(r.base-r.selected),2)} tCO₂e · ${fmt(red,1)}%`:'Unscored'}</strong><span>Requires comparable complete totals and validated intervention inputs.</span></div>`;
+    $('lifecycle-chart').innerHTML=[['A1–A3 · product',r.embodied],['B6 · operational',r.operational]].map(x=>`<div class="stacked-row"><span>${x[0]}</span><div class="stacked-track"><i class="stack-embodied" style="width:${r.base!=null&&x[1]!=null?x[1]/r.base*100:0}%"></i></div><strong>${fmt(t(x[1]),2)} t</strong></div>`).join('')+'<div class="chart-legend">Unavailable modules are not treated as zero; no whole-life total is reported.</div>';
     $('material-chart').innerHTML=r.lines.map(x=>`<div class="pareto-row"><span>${x.name}</span><div><i style="width:${r.embodied?x.carbon/r.embodied*100:0}%"></i></div><strong>${fmt(t(x.carbon),2)} t</strong></div>`).join('');
-    $('scenario-chart').innerHTML=`<div class="scenario-row"><span>Baseline</span><div><i style="width:100%"></i></div><strong>${fmt(t(r.base),2)} t</strong></div><div class="scenario-row"><span>Selected</span><div><i style="width:${r.base?r.selected/r.base*100:0}%"></i></div><strong>${fmt(t(r.selected),2)} t</strong></div>`;
-    $('lifetime-chart').innerHTML=`<p class="empty-note">${fmt(r.annualKwh* r.loc.grid/1000,2)} tCO₂e/year × ${r.years} years = ${fmt(t(r.operational),2)} tCO₂e operational carbon. Constant use and illustrative grid factor.</p>`;
-    $('reduction-table').innerHTML=(r.reductions.length?r.reductions.map(x=>`<div class="reduction-row"><span>${esc(x.name)}</span><strong>−${fmt(t(x.carbon),2)} tCO₂e</strong><small>Prototype estimate; verify before design decisions.</small></div>`).join(''):'<p class="empty-note">Choose design interventions above to see the estimated reduction by cause.</p>')+`<div class="reduction-row reduction-total"><span>Total reduction</span><strong>${fmt(t(r.base-r.selected),2)} tCO₂e</strong></div>`;
+    $('scenario-chart').innerHTML=`<div class="scenario-row unscored"><span>Baseline</span><div><i style="width:0%"></i></div><strong>${fmt(t(r.base),2)} t</strong></div><div class="scenario-row unscored"><span>Selected</span><div><i style="width:0%"></i></div><strong>${fmt(t(r.selected),2)} t</strong></div>`;
+    $('lifetime-chart').innerHTML='<p class="empty-note">Annual emissions unavailable: the grid factor record lacks traceable source metadata and an explicit compatible CO₂e unit.</p>';
+    $('reduction-table').innerHTML=(r.reductions.length?r.reductions.map(x=>`<div class="reduction-row"><span>${esc(x.name)}</span><strong>Unscored</strong><small>Intervention inputs and added impacts are not yet modelled.</small></div>`).join(''):'<p class="empty-note">Choose design interventions above; they will remain unscored until the affected inputs and added lifecycle impacts are supplied.</p>')+`<div class="reduction-row reduction-total"><span>Total reduction</span><strong>${r.base!=null&&r.selected!=null?fmt(t(r.base-r.selected),2)+' tCO₂e':'Unscored'}</strong></div>`;
     $('cost-inputs').innerHTML=r.reductions.map(x=>`<label>${esc(x.name)}<span>₹ <input type="number" min="0" step="1" data-cost="${x.id}" placeholder="Enter quote" /></span></label>`).join('')||'<p class="empty-note">Select options and add project quotes to compare cost and carbon.</p>';renderCosts();
-    const budget=Number($('carbon-budget').value);$('budget-view').innerHTML=$('carbon-budget').value===''?'<p class="empty-note">Enter a lifecycle target to compare it with the prototype estimate.</p>':`<div class="budget-numbers"><span>Target<strong>${fmt(budget,1)} t</strong></span><span>Selected<strong>${fmt(t(r.selected),1)} t</strong></span></div><div class="budget-track"><i style="width:${Math.min(100,t(r.selected)/Math.max(budget,.01)*100)}%"></i></div><div class="budget-state ${t(r.selected)<=budget?'within-budget':''}">${t(r.selected)<=budget?'WITHIN TARGET':`${fmt(t(r.selected)-budget,1)} t over target`}</div>`;
+    const budget=Number($('carbon-budget').value);$('budget-view').innerHTML=$('carbon-budget').value===''?'<p class="empty-note">Enter a lifecycle target to compare it with the prototype estimate.</p>':r.selected==null?'<p class="empty-note">Target comparison unavailable until a complete compatible scenario total is calculated.</p>':`<div class="budget-numbers"><span>Target<strong>${fmt(budget,1)} t</strong></span><span>Selected<strong>${fmt(t(r.selected),1)} t</strong></span></div><div class="budget-track"><i style="width:${Math.min(100,t(r.selected)/Math.max(budget,.01)*100)}%"></i></div><div class="budget-state ${t(r.selected)<=budget?'within-budget':''}">${t(r.selected)<=budget?'WITHIN TARGET':`${fmt(t(r.selected)-budget,1)} t over target`}</div>`;
     $('scenario-notice').hidden=false;$('scenario-notice').textContent='Prototype estimate only. Material factors, quantity intensities, grid factors and intervention effects are illustrative assumptions with low confidence; verify against project data.';
     renderMixAlternatives();
   }
