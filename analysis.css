@@ -41,6 +41,7 @@
 .audit-validation li.validation-fail{background:#fff0ec}
 .audit-validation li.validation-fail strong{color:#a13f2d}
 .audit-validation li.validation-pending{background:#f3f5f3}
+.calculation-actions{display:flex;align-items:center;gap:12px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line,#e5e9e6)}.calculation-actions #calculation-state{font-size:11px;line-height:1.5;color:#718078}
 .module-summary{margin-top:20px;padding:18px;border-top:1px solid var(--line,#e5e9e6)}
 .module-summary h3{margin:0 0 12px}
 .module-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}

@@ -9,6 +9,7 @@
     {id:'solar', title:'Add rooftop solar PV', detail:'Requires generation, self-consumption, lifetime and system-factor inputs; currently unscored.', type:'energy'}
   ];
   let results;
+  let hasCalculated = false;
   const fmt = (n,d=1) => {
     if (n == null || isNaN(n)) return '—';
     return Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -66,28 +67,36 @@
     $('saved-status-text').textContent='Prototype demo loaded';$('side-project').nextElementSibling.textContent='Prototype demo · India';
     $('factor-detail').innerHTML='<strong>Prototype factor register · low confidence</strong><p>All material factors and quantity intensities are illustrative assumptions for demonstrating the workflow. They are not verified Indian EPD values. Replace with cited product data and confirm the system boundary before decisions.</p><div class="factor-record-grid">'+materials.map(m=>`<div><b>${esc(m.name)} · ${esc(m.confidence)} confidence</b><span>Factor: ${m.factor} kgCO₂e/kg · ${esc(m.boundary)}</span><span>Source: ${esc(m.source)} · ${m.publicationYear}</span><span>Region: ${esc(m.region)}</span><span>Manufacturer: ${m.manufacturer||'Not specified'} · EPD: ${m.epdAvailable?'available':'not supplied'}</span><span>Applicability: ${esc(m.applicability)}</span></div>`).join('')+'</div><p>Product-stage estimate = Σ(material quantity × illustrative A1–A3 factor). The demo does not claim certification.</p>';
     $('estimator-inputs').innerHTML=materials.map(m=>{const assumption=structures.rcc.find(x=>x.materialId===m.id);return `<label class="field">${m.name} <span class="unit">kg/m²</span><input type="number" min="0" step="any" data-intensity="${m.id}" value="${assumption?.intensity ?? ''}" /></label>`;}).join('');
-    $('opportunity-grid').innerHTML=opts.map(o=>`<label class="opportunity-card"><input type="checkbox" data-option="${o.id}" /><span class="option-icon">↗</span><strong>${o.title}</strong><small>${o.detail}</small><b data-saving="${o.id}">Recalculate to estimate</b></label>`).join('');
+    $('opportunity-grid').innerHTML=opts.map(o=>`<label class="opportunity-card"><input type="checkbox" data-option="${o.id}" /><span class="option-icon">↗</span><strong>${o.title}</strong><small>${o.detail}</small><b data-saving="${o.id}">Press Calculate to update</b></label>`).join('');
     $('material-alternatives').querySelector('.panel-heading').innerHTML='<div><span class="section-kicker">MATERIAL ALTERNATIVES</span><h2>M30 mix candidates</h2><p class="panel-subtitle">Compare project-specific product data. Options remain unscored without supplier factors and engineer validation.</p></div><span class="mix-warning">UNSCORED UNTIL SOURCED</span>';
     $('material-alternatives').querySelector('.alternative-detail').innerHTML=`<div class="mix-context"><label class="field">Application<select id="mix-application"><option>Structural concrete</option><option>Slab / floor</option><option>Foundation</option><option>Non-structural</option></select></label><label class="field">Exposure<select id="mix-exposure"><option>General</option><option>Coastal / chloride</option><option>Sulphate</option><option>Other project exposure</option></select></label><div class="constraint-message"><strong>Eligibility needs project review</strong><span>Verify design strength, curing, durability, IS code requirements and supplier mix data with the project engineer. No universal GGBS cap is applied.</span></div></div><div class="mix-table-wrap"><table class="mix-table"><thead><tr><th>Candidate</th><th>Indicative composition</th><th>Carbon result</th><th>Validation</th></tr></thead><tbody>${DATA.mixCandidates.map((m,i)=>`<tr><td><strong>${String.fromCharCode(65+i)} · ${m.label}</strong></td><td>${m.blend}</td><td>Unscored · factor not supplied</td><td>Project / engineer check</td></tr>`).join('')}</tbody></table></div><div class="alternative-detail"><strong>Evidence needed</strong><p>Enter a supplier-specific EPD or declared A1–A3 factor for a like-for-like strength class, curing regime, exposure and functional unit. This screen does not assume that a mix is eligible or quantify savings.</p></div>`;
     $('method-detail').innerHTML='<div><strong>Prototype calculation</strong><p>Gross floor area = floor plate × floors. Material quantities = gross floor area × editable material-intensity assumptions. Product-stage A1–A3 = Σ(quantity × illustrative factor). B6 and other lifecycle modules are not included in a combined whole-life total without compatible sourced inputs.</p></div><div><strong>Assumption status</strong><p>All demo quantity intensities, material factors, city energy intensities, grid factors, and intervention effects are illustrative assumptions with low confidence. The sensitivity band is a simple ±25% prototype range, not a statistical uncertainty analysis. Replace with traceable project data before decisions.</p></div><div><strong>India context</strong><p>BEE ECSBC 2024 Appendix 6 is included as methodology context for embodied-carbon reporting. This prototype makes no compliance claim.</p><a href="https://beeindia.gov.in/WriteReadData/L45218/7534511430467336.pdf" target="_blank" rel="noreferrer">BEE · ECSBC 2024 ↗</a></div>';
-    $('project-name').addEventListener('input',calculate);
-    document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calculate));
-    document.addEventListener('input',event=>{if(event.target.matches('[data-cost]'))renderCosts();});
-    ['floor-area','floors','structure','location','building-type'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='structure'){const assumptions=structures[$('structure').value]||[];materials.forEach(m=>{const field=document.querySelector(`[data-intensity="${m.id}"]`);const assumption=assumptions.find(x=>x.materialId===m.id);if(field)field.value=assumption?.intensity ?? '';});}applyQuantities();calculate();}));
-
-    $('annual-kwh').addEventListener('input',()=>{$('annual-kwh').dataset.userEdited='true';calculate();});
+    document.addEventListener('input',markInputsChanged);
+    document.addEventListener('change',markInputsChanged);
+    $('calculate-button').addEventListener('click',calculate);
+    $('structure').addEventListener('change',()=>{
+      const assumptions=structures[$('structure').value]||[];
+      materials.forEach(m=>{
+        const field=document.querySelector(`[data-intensity="${m.id}"]`);
+        const assumption=assumptions.find(x=>x.materialId===m.id);
+        if(field)field.value=assumption?.intensity ?? '';
+      });
+      markInputsChanged();
+    });
     $('estimate-quantities').addEventListener('click',applyQuantities);
     $('toggle-details').addEventListener('click',()=>{const x=$('factor-detail');x.hidden=!x.hidden;$('toggle-details').setAttribute('aria-expanded',String(!x.hidden));});
     $('method-toggle').addEventListener('click',()=>{const x=$('method-detail');x.hidden=!x.hidden;$('method-toggle').setAttribute('aria-expanded',String(!x.hidden));});
     $('print-report').addEventListener('click',()=>window.print()); $('footer-print').addEventListener('click',()=>window.print());
     document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.scroll)?.scrollIntoView({behavior:'smooth'})));
-    applyQuantities(); calculate();
+  }
+  function markInputsChanged(){
+    $('calculation-state').textContent=hasCalculated?'Inputs changed since the last calculation. Press Calculate to refresh results.':'Enter or review your inputs, then press Calculate.';
   }
   function applyQuantities(){
     const floorPlate=Number($('floor-area').value), floors=Number($('floors').value);
     const area=Number.isFinite(floorPlate)&&floorPlate>0&&Number.isInteger(floors)&&floors>0?floorPlate*floors:null;
     materials.forEach(m=>{const intensity=document.querySelector(`[data-intensity="${m.id}"]`); const qtyField=document.querySelector(`[data-q="${m.id}"]`); const raw=intensity?.value; const quantity=area==null?null:raw===''||raw==null?0:Number(raw)*area; if(qtyField)qtyField.value=Number.isFinite(quantity)?String(quantity):'';});
-    $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; calculate();
+    $('estimator-area').textContent=`Gross floor area: ${fmt(area,1)} m²`; $('estimator-status').textContent='Quantities are area × editable prototype material intensity assumptions.'; markInputsChanged();
   }
 
   function calculate(){
@@ -189,6 +198,8 @@
     results.base = detailedResults.wholeLife;
 
     render();
+    hasCalculated = true;
+    $('calculation-state').textContent='Results updated using the current inputs.';
   }
   function render(){
     const r=results,red=r.base!=null&&r.selected!=null&&r.base>0?100*(r.base-r.selected)/r.base:null, intensity=r.area&&r.base!=null?r.base/r.area:null;
